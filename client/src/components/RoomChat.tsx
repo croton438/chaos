@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { socket } from "../services/socket";
 import { useLanguage } from "../i18n/LanguageContext";
 
-export function RoomChat({ profile, compact = false }: { profile: SessionProfile; compact?: boolean }) {
+export function RoomChat({ profile, compact = false, embedded = false }: { profile: SessionProfile; compact?: boolean; embedded?: boolean }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -45,10 +45,10 @@ export function RoomChat({ profile, compact = false }: { profile: SessionProfile
   };
 
   return (
-    <section className={`glass-panel flex min-h-0 flex-col overflow-hidden rounded-2xl p-5 ${compact ? "h-[22rem] xl:h-[calc(100vh-28rem)] xl:min-h-[18rem]" : "h-[32rem] xl:h-[calc(100vh-11rem)] xl:max-h-[46rem] xl:min-h-[34rem]"}`}>
-      <div className="mb-4 flex items-center gap-3 border-b border-white/5 pb-4">
-        <div className="rounded-xl bg-chaos-cyan/10 p-2.5 text-chaos-cyan"><MessageSquare size={19} /></div>
-        <div><h2 className="font-bold text-white">{t("chat.title")}</h2><p className="text-xs text-zinc-500">{t("chat.description")}</p></div>
+    <section className={`${embedded ? "mt-5 h-72 border-t border-white/[0.06] pt-4" : "glass-panel rounded-2xl p-5"} flex min-h-0 flex-col overflow-hidden ${embedded ? "" : compact ? "h-[22rem] xl:h-[calc(100vh-28rem)] xl:min-h-[18rem]" : "h-[32rem] xl:h-[calc(100vh-11rem)] xl:max-h-[46rem] xl:min-h-[34rem]"}`}>
+      <div className={`${embedded ? "mb-2" : "mb-4 border-b border-white/5 pb-4"} flex items-center gap-3`}>
+        <div className={`${embedded ? "rounded-lg p-2" : "rounded-xl p-2.5"} bg-chaos-cyan/10 text-chaos-cyan`}><MessageSquare size={embedded ? 15 : 19} /></div>
+        <div><h2 className={`${embedded ? "text-[10px] uppercase tracking-[0.18em]" : ""} font-bold text-white`}>{t("chat.title")}</h2>{!embedded && <p className="text-xs text-zinc-500">{t("chat.description")}</p>}</div>
       </div>
 
       <div ref={messageListRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-2">
@@ -74,9 +74,9 @@ export function RoomChat({ profile, compact = false }: { profile: SessionProfile
       </div>
 
       {error && <p className="mt-3 text-xs text-rose-300">{error}</p>}
-      <form onSubmit={submit} className="mt-4 flex gap-2 border-t border-white/5 pt-4">
-        <input className="field min-w-0" maxLength={500} value={content} onChange={(event) => setContent(event.target.value)} placeholder={t("chat.placeholder")} />
-        <button aria-label="Send message" disabled={!content.trim() || pending} className="grid w-12 shrink-0 place-items-center rounded-xl bg-chaos-violet text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40" type="submit"><Send size={18} /></button>
+      <form onSubmit={submit} className={`${embedded ? "mt-2 pt-2" : "mt-4 pt-4"} flex gap-2 border-t border-white/5`}>
+        <input className={`${embedded ? "game-field py-2 text-xs" : "field"} min-w-0`} maxLength={500} value={content} onChange={(event) => setContent(event.target.value)} placeholder={t("chat.placeholder")} />
+        <button aria-label="Send message" disabled={!content.trim() || pending} className={`${embedded ? "w-10 rounded-lg" : "w-12 rounded-xl"} grid shrink-0 place-items-center bg-chaos-violet text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40`} type="submit"><Send size={embedded ? 15 : 18} /></button>
       </form>
     </section>
   );

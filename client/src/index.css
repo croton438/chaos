@@ -14,23 +14,39 @@
   box-sizing: border-box;
 }
 
-body {
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
   margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at 15% 10%, rgba(139, 92, 246, 0.14), transparent 32rem),
-    radial-gradient(circle at 85% 80%, rgba(34, 211, 238, 0.09), transparent 28rem),
-    #050507;
+  overflow: hidden;
 }
 
-button, input {
+body {
+  min-width: 320px;
+  background: #050507;
+}
+
+button,
+input,
+select {
   font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
 }
 
 ::selection {
   color: white;
   background: rgba(139, 92, 246, 0.65);
+}
+
+.client-title,
+.client-sidebar,
+.client-primary-button {
+  font-family: Bahnschrift, "Arial Narrow", Inter, ui-sans-serif, sans-serif;
 }
 
 @layer components {
@@ -41,5 +57,187 @@ button, input {
   .field {
     @apply w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-chaos-violet focus:ring-2 focus:ring-chaos-violet/20;
   }
+
+  .game-panel {
+    @apply relative rounded-xl border border-white/[0.08] bg-[#0b0b10]/80 shadow-[0_20px_60px_rgba(0,0,0,.28)] backdrop-blur-xl;
+  }
+
+  .game-panel::before {
+    content: "";
+    @apply pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-chaos-violet/40 to-transparent;
+  }
+
+  .game-field {
+    @apply w-full rounded-lg border border-white/[0.08] bg-black/50 px-3.5 py-3 text-sm font-semibold text-white outline-none transition placeholder:text-zinc-700 hover:border-white/15 focus:border-chaos-violet/60 focus:bg-black/65 focus:shadow-[0_0_20px_rgba(139,92,246,.1)];
+  }
+
+  .client-primary-button {
+    @apply flex w-full items-center gap-3 rounded-lg border border-chaos-violet/50 bg-gradient-to-r from-violet-700 to-chaos-violet px-5 py-3.5 text-sm font-black uppercase tracking-[0.12em] text-white shadow-[0_0_30px_rgba(139,92,246,.2)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-300/70 hover:shadow-[0_0_42px_rgba(139,92,246,.34)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0;
+  }
 }
 
+.game-client-shell {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 28px;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 21% 13%, rgba(108, 43, 196, 0.17), transparent 31rem),
+    radial-gradient(circle at 74% 88%, rgba(0, 190, 220, 0.09), transparent 34rem),
+    linear-gradient(135deg, #07060a 0%, #050507 50%, #061014 100%);
+}
+
+.client-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0.8;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+    repeating-linear-gradient(115deg, transparent 0 80px, rgba(139, 92, 246, 0.018) 81px 82px);
+  background-size: 44px 44px, 44px 44px, auto;
+}
+
+.client-atmosphere::before {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  opacity: 0.18;
+  transform: rotate(8deg);
+  background-image: repeating-radial-gradient(circle at 30% 30%, rgba(255,255,255,.18) 0 0.5px, transparent 0.8px 5px);
+  background-size: 7px 7px;
+  animation: noise-drift 18s linear infinite;
+}
+
+.client-atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 25%, rgba(0, 0, 0, 0.68) 100%);
+}
+
+.client-sigil {
+  position: absolute;
+  right: 18%;
+  top: 50%;
+  transform: translateY(-50%) rotate(-12deg);
+  color: transparent;
+  font-family: Bahnschrift, "Arial Black", sans-serif;
+  font-size: min(36vw, 34rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.12em;
+  -webkit-text-stroke: 1px rgba(139, 92, 246, 0.025);
+  text-shadow: 0 0 100px rgba(139, 92, 246, 0.025);
+}
+
+.client-sidebar {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(13, 12, 18, 0.98), rgba(7, 7, 10, 0.96));
+  box-shadow: 20px 0 70px rgba(0, 0, 0, 0.26);
+}
+
+.client-status-bar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(4, 4, 7, 0.97);
+  padding: 0 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.client-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.34) transparent;
+}
+
+.client-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.client-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.client-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: linear-gradient(#8b5cf6, #22d3ee);
+}
+
+@keyframes noise-drift {
+  from { transform: translate3d(0, 0, 0) rotate(8deg); }
+  50% { transform: translate3d(3%, -2%, 0) rotate(8deg); }
+  to { transform: translate3d(0, 0, 0) rotate(8deg); }
+}
+
+@media (max-height: 820px) {
+  .client-sidebar nav {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .client-sidebar nav button {
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+  }
+}
+
+@media (max-width: 1180px) {
+  .client-sidebar > div:first-child {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .client-sidebar > div:first-child > div > div:last-child,
+  .client-sidebar > div:nth-child(2) > div > div:last-child,
+  .client-sidebar > div:nth-last-child(2),
+  .client-sidebar nav p,
+  .client-sidebar nav button > span:last-child {
+    display: none;
+  }
+
+  .client-sidebar > div:nth-child(2) {
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+  }
+
+  .client-sidebar nav button {
+    justify-content: center;
+    gap: 0;
+    overflow: hidden;
+    color: transparent;
+    font-size: 0;
+  }
+
+  .client-sidebar nav button svg {
+    width: 19px;
+    height: 19px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
