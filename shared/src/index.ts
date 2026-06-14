@@ -48,7 +48,7 @@ export interface ChatMessage {
   createdAt: number;
 }
 
-export type GameStatus = "waiting" | "playing" | "round_result" | "finished";
+export type GameStatus = "waiting" | "round_intro" | "playing" | "round_result" | "finished";
 
 export interface PlayerScore {
   playerId: string;
@@ -84,6 +84,7 @@ export interface PublicTask {
 export interface RoundDecisionReveal {
   playerId: string;
   playerName: string;
+  choiceId: string;
   choiceLabel: string;
 }
 
@@ -95,7 +96,9 @@ export interface RoundScoreChange {
 }
 
 export interface RoundResult {
+  taskId: string;
   taskName: string;
+  outcomeId: string;
   summary: string;
   decisions: RoundDecisionReveal[];
   scoreChanges: RoundScoreChange[];
@@ -106,6 +109,7 @@ export interface GameState {
   status: GameStatus;
   roundNumber: number;
   maxRounds: number;
+  introEndsAt: number | null;
   roundEndsAt: number | null;
   nextRoundAt: number | null;
   task: PublicTask | null;

@@ -1,10 +1,12 @@
 import type { PlayerScore } from "@chaos-club/shared";
 import { Trophy } from "lucide-react";
+import { useLanguage } from "../../i18n/LanguageContext";
 
 export function Scoreboard({ scores, currentPlayerId }: { scores: PlayerScore[]; currentPlayerId: string }) {
+  const { t } = useLanguage();
   return (
     <section className="rounded-2xl border border-white/10 bg-black/25 p-4">
-      <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-amber-300"><Trophy size={15} /> Scoreboard</div>
+      <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-amber-300"><Trophy size={15} /> {t("game.scoreboard")}</div>
       <div className="space-y-2">
         {scores.map((score, index) => (
           <div key={score.playerId} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${score.playerId === currentPlayerId ? "bg-chaos-violet/15" : "bg-white/[0.03]"}`}>
@@ -18,4 +20,3 @@ export function Scoreboard({ scores, currentPlayerId }: { scores: PlayerScore[];
     </section>
   );
 }
-

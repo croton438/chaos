@@ -37,13 +37,14 @@ export const fakeContract: TaskDefinition = {
           deltas.set(b!.id, bChoice === "fake" ? 8 : 0);
         }
         return {
+          taskId: "fake-contract",
           taskName: "Fake Contract",
+          outcomeId: aChoice === bChoice ? (aChoice === "real" ? "mutual-trust" : "mutual-betrayal") : "betrayal",
           summary: aChoice === bChoice ? "Both sides revealed the same intention." : "The contract ended in betrayal.",
-          decisions: participants.map((participant) => ({ playerId: participant.id, playerName: participant.name, choiceLabel: labelChoice(choicesByPlayer, participant.id, decisions.get(participant.id) ?? "real") })),
+          decisions: participants.map((participant) => ({ playerId: participant.id, playerName: participant.name, choiceId: decisions.get(participant.id) ?? "real", choiceLabel: labelChoice(choicesByPlayer, participant.id, decisions.get(participant.id) ?? "real") })),
           scoreChanges: participants.map((participant) => ({ playerId: participant.id, playerName: participant.name, delta: deltas.get(participant.id) ?? 0, reason: "Contract outcome" })),
         };
       },
     };
   },
 };
-

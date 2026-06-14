@@ -4,6 +4,8 @@ Web-based social voice-chat party game foundation. The current milestone contain
 
 The playable MVP now includes an eight-round, server-authoritative game loop with synchronized timers, locked decisions, score resolution, round results, and a final winner. One-player test games use the House Bot; two-player games use the two-player task pool; Guarantor unlocks at three players and Secret Partnership unlocks at four.
 
+The interface defaults to Turkish and can be switched to English with the persistent `TR / EN` control. Once a game starts, the room is replaced by a full-screen game stage. Every round begins with a synchronized 10-second briefing containing the objective, scoring rules, negotiation guidance, participants, and private role information before the 30-second decision phase.
+
 ## Stack
 
 - React, TypeScript, Vite

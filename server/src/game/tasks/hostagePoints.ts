@@ -27,13 +27,14 @@ export const hostagePoints: TaskDefinition = {
         const choice = decisions.get(playerB.id) ?? "return";
         const deltas = choice === "return" ? new Map([[playerA.id, 3], [playerB.id, 3]]) : new Map([[playerA.id, -2], [playerB.id, 6]]);
         return {
+          taskId: "hostage-points",
           taskName: "Hostage Points",
+          outcomeId: choice === "return" ? "returned" : "stolen",
           summary: choice === "return" ? "The hostage was returned." : "The holder stole the hostage points.",
-          decisions: [{ playerId: playerB.id, playerName: playerB.name, choiceLabel: labelChoice(choicesByPlayer, playerB.id, choice) }],
+          decisions: [{ playerId: playerB.id, playerName: playerB.name, choiceId: choice, choiceLabel: labelChoice(choicesByPlayer, playerB.id, choice) }],
           scoreChanges: participants.map((participant) => ({ playerId: participant.id, playerName: participant.name, delta: deltas.get(participant.id) ?? 0, reason: "Hostage outcome" })),
         };
       },
     };
   },
 };
-

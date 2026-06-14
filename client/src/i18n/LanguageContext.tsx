@@ -1,0 +1,207 @@
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+
+export type Language = "tr" | "en";
+
+const translations = {
+  tr: {
+    "common.you": "sen",
+    "common.player": "Oyuncu",
+    "common.houseBot": "Kasa Botu",
+    "common.leave": "Odadan Çık",
+    "common.copied": "Kopyalandı",
+    "common.players": "Oyuncular",
+    "common.connected": "bağlı",
+    "common.observer": "İzleyici",
+    "landing.tagline": "Özel odalar. Açık kaos.",
+    "landing.title": "Kulübe gir",
+    "landing.description": "Kimliğini oluştur, bir odaya katıl ve masadaki yerini al.",
+    "landing.username": "Kullanıcı adı",
+    "landing.enter": "Kulübe Gir",
+    "landing.rooms": "Canlı odalar",
+    "landing.voice": "WebRTC ses",
+    "character.signed": "Giriş yapan",
+    "character.unnamed": "İsimsiz Oyuncu",
+    "character.setup": "Kimlik oluşturma",
+    "character.title": "Karakterini oluştur",
+    "character.name": "Karakter adı",
+    "character.avatar": "Görünüm",
+    "character.color": "Sinyal rengi",
+    "character.continue": "Lobiye Devam Et",
+    "lobby.label": "Kulüp lobisi",
+    "lobby.title": "Odanı bul.",
+    "lobby.description": "Özel bir oda oluştur veya mevcut oda kodunu kullan.",
+    "lobby.online": "Sunucu çevrimiçi",
+    "lobby.connecting": "Bağlanıyor",
+    "lobby.create": "Oda oluştur",
+    "lobby.host": "Oda yöneticisi sen olursun",
+    "lobby.createButton": "Oda Oluştur",
+    "lobby.join": "Kodla katıl",
+    "lobby.codeHint": "Kodlar altı karakterdir",
+    "lobby.joinButton": "Odaya Katıl",
+    "lobby.wait": "Lütfen bekle...",
+    "lobby.active": "Aktif odalar",
+    "lobby.live": "Bu sunucudaki canlı odalar",
+    "lobby.noRooms": "Henüz aktif oda yok",
+    "lobby.firstRoom": "Bu sunucudaki ilk odayı sen oluştur.",
+    "room.live": "Canlı oda",
+    "room.micOn": "Mikrofon Açık",
+    "room.enableMic": "Mikrofonu Aç",
+    "room.voiceTitle": "Eşler arası ses",
+    "room.voiceDescription": "Socket.io yalnızca bağlantı sinyallerini taşır. Ses doğrudan oyuncular arasında gider.",
+    "chat.title": "Oda sohbeti",
+    "chat.description": "Mesajlar oda kapanana kadar saklanır",
+    "chat.empty": "Henüz mesaj yok",
+    "chat.placeholder": "Bir mesaj yaz...",
+    "game.ready": "Masa hazır",
+    "game.readyDescription": "Sekiz tur boyunca anlaşmalar, ihanetler ve geçici ittifaklar. Tek kişilik testte Kasa Botu kullanılır.",
+    "game.roundTime": "30 saniyelik turlar",
+    "game.start": "Oyunu Başlat",
+    "game.starting": "Başlatılıyor...",
+    "game.waitHost": "Oyunu başlatması için oda yöneticisi bekleniyor.",
+    "game.title": "Chaos Club Oyunu",
+    "game.round": "Tur",
+    "game.intro": "Tur Tanıtımı",
+    "game.introWait": "Kuralları incele. Karar süresi birazdan başlayacak.",
+    "game.decision": "Karar Aşaması",
+    "game.result": "Tur Sonucu",
+    "game.scoreboard": "Puan Tablosu",
+    "game.activeDeal": "Aktif anlaşma",
+    "game.privateInfo": "Sana özel bilgi",
+    "game.locked": "Kararın kilitlendi. Seçimin tur bitene kadar gizli kalacak.",
+    "game.observing": "Bu görevde izleyicisin. Oyuncuların pazarlığını takip et.",
+    "game.revealed": "Kararlar açıklandı",
+    "game.complete": "Oyun tamamlandı",
+    "game.tie": "Oyun berabere",
+    "game.wins": "{name} kazandı",
+    "game.finalScore": "Final puanı: {score}",
+    "game.playAgain": "Tekrar Oyna",
+    "game.chat": "Sohbet",
+    "game.voice": "Ses ve Oyuncular",
+  },
+  en: {
+    "common.you": "you",
+    "common.player": "Player",
+    "common.houseBot": "House Bot",
+    "common.leave": "Leave Room",
+    "common.copied": "Copied",
+    "common.players": "Players",
+    "common.connected": "connected",
+    "common.observer": "Observer",
+    "landing.tagline": "Private rooms. Open chaos.",
+    "landing.title": "Enter the club",
+    "landing.description": "Create your identity, join a room, and take your seat at the table.",
+    "landing.username": "Username",
+    "landing.enter": "Enter Club",
+    "landing.rooms": "Live rooms",
+    "landing.voice": "WebRTC voice",
+    "character.signed": "Signed in as",
+    "character.unnamed": "Unnamed Player",
+    "character.setup": "Identity setup",
+    "character.title": "Create your character",
+    "character.name": "Character name",
+    "character.avatar": "Appearance",
+    "character.color": "Signal color",
+    "character.continue": "Continue to Lobby",
+    "lobby.label": "Club lobby",
+    "lobby.title": "Find your room.",
+    "lobby.description": "Create a private room or use an existing room code.",
+    "lobby.online": "Server online",
+    "lobby.connecting": "Connecting",
+    "lobby.create": "Create room",
+    "lobby.host": "You become the room host",
+    "lobby.createButton": "Create Room",
+    "lobby.join": "Join by code",
+    "lobby.codeHint": "Codes contain six characters",
+    "lobby.joinButton": "Join Room",
+    "lobby.wait": "Please wait...",
+    "lobby.active": "Active rooms",
+    "lobby.live": "Live rooms on this server",
+    "lobby.noRooms": "No active rooms yet",
+    "lobby.firstRoom": "Create the first room on this server.",
+    "room.live": "Live room",
+    "room.micOn": "Microphone On",
+    "room.enableMic": "Enable Microphone",
+    "room.voiceTitle": "Peer-to-peer voice",
+    "room.voiceDescription": "Socket.io carries signaling only. Audio travels directly between players.",
+    "chat.title": "Room chat",
+    "chat.description": "Messages live until the room closes",
+    "chat.empty": "No messages yet",
+    "chat.placeholder": "Write a message...",
+    "game.ready": "The table is ready",
+    "game.readyDescription": "Eight rounds of deals, betrayal and temporary alliances. Solo tests use the House Bot.",
+    "game.roundTime": "30 second rounds",
+    "game.start": "Start Game",
+    "game.starting": "Starting...",
+    "game.waitHost": "Waiting for the room host to start the game.",
+    "game.title": "Chaos Club Game",
+    "game.round": "Round",
+    "game.intro": "Round Briefing",
+    "game.introWait": "Review the rules. Decision time begins shortly.",
+    "game.decision": "Decision Phase",
+    "game.result": "Round Result",
+    "game.scoreboard": "Scoreboard",
+    "game.activeDeal": "Active deal",
+    "game.privateInfo": "Private information",
+    "game.locked": "Decision locked. Your choice stays hidden until the round ends.",
+    "game.observing": "You are observing this task. Follow the negotiation.",
+    "game.revealed": "Decisions revealed",
+    "game.complete": "Game complete",
+    "game.tie": "It's a tie",
+    "game.wins": "{name} wins",
+    "game.finalScore": "Final score: {score}",
+    "game.playAgain": "Play Again",
+    "game.chat": "Chat",
+    "game.voice": "Voice and Players",
+  },
+} as const;
+
+type TranslationKey = keyof typeof translations.tr;
+
+interface LanguageContextValue {
+  language: Language;
+  setLanguage: (language: Language) => void;
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string;
+}
+
+const LanguageContext = createContext<LanguageContextValue | null>(null);
+
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [language, updateLanguage] = useState<Language>(() => localStorage.getItem("chaos-club:language") === "en" ? "en" : "tr");
+  const value = useMemo<LanguageContextValue>(() => ({
+    language,
+    setLanguage(nextLanguage) {
+      localStorage.setItem("chaos-club:language", nextLanguage);
+      updateLanguage(nextLanguage);
+    },
+    t(key, values) {
+      let text: string = translations[language][key];
+      for (const [name, replacement] of Object.entries(values ?? {})) text = text.replace(`{${name}}`, String(replacement));
+      return text;
+    },
+  }), [language]);
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
+}
+
+export function useLanguage(): LanguageContextValue {
+  const context = useContext(LanguageContext);
+  if (!context) throw new Error("useLanguage must be used inside LanguageProvider");
+  return context;
+}
+
+export function localizeRuntimeMessage(message: string | null, language: Language): string | null {
+  if (!message || language === "en") return message;
+  const exact: Record<string, string> = {
+    "Only the room host can start the game.": "Oyunu yalnızca oda yöneticisi başlatabilir.",
+    "A game is already running.": "Bu odada zaten bir oyun çalışıyor.",
+    "There is no active round.": "Şu anda aktif bir tur yok.",
+    "Your decision is already locked.": "Kararın zaten kilitlendi.",
+    "You are observing this task.": "Bu görevde izleyicisin.",
+    "Invalid decision.": "Geçersiz karar.",
+    "Microphone access was denied or no input device is available.": "Mikrofon izni reddedildi veya kullanılabilir mikrofon bulunamadı.",
+    "Could not negotiate the voice connection.": "Ses bağlantısı kurulamadı.",
+    "Voice offer negotiation failed.": "Ses bağlantısı teklifi başarısız oldu.",
+    "Voice answer negotiation failed.": "Ses bağlantısı yanıtı başarısız oldu.",
+    "Direct voice connection failed. A TURN server may be required for this network.": "Doğrudan ses bağlantısı kurulamadı. Bu ağ için TURN sunucusu gerekebilir.",
+  };
+  return exact[message] ?? message;
+}

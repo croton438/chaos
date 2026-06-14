@@ -53,13 +53,14 @@ export const secretPartners: TaskDefinition = {
           deltas.set(player.id, guess === sortedPartners ? 4 : -1);
         }
         return {
+          taskId: "secret-partners",
           taskName: "Secret Partnership",
+          outcomeId: matched ? "signals-matched" : "signals-missed",
           summary: matched ? `${partnerA!.character.name} and ${partnerB!.character.name} matched their signals.` : "The secret partners failed to match signals.",
-          decisions: context.players.map((player) => ({ playerId: player.id, playerName: player.character.name, choiceLabel: labelChoice(choicesByPlayer, player.id, decisions.get(player.id) ?? choicesByPlayer.get(player.id)![0]!.id) })),
+          decisions: context.players.map((player) => ({ playerId: player.id, playerName: player.character.name, choiceId: decisions.get(player.id) ?? choicesByPlayer.get(player.id)![0]!.id, choiceLabel: labelChoice(choicesByPlayer, player.id, decisions.get(player.id) ?? choicesByPlayer.get(player.id)![0]!.id) })),
           scoreChanges: context.players.map((player) => ({ playerId: player.id, playerName: player.character.name, delta: deltas.get(player.id) ?? 0, reason: partnerIds.includes(player.id) ? "Secret signal" : "Partner guess" })),
         };
       },
     };
   },
 };
-

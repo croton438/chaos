@@ -1,6 +1,7 @@
 import type { Player } from "@chaos-club/shared";
 import { Crown, Mic, MicOff, Radio, Volume1, Volume2, VolumeX } from "lucide-react";
 import { Avatar } from "./Avatar";
+import { useLanguage } from "../i18n/LanguageContext";
 
 interface PlayerCardProps {
   player: Player;
@@ -12,6 +13,7 @@ interface PlayerCardProps {
 
 export function PlayerCard({ player, isHost, isCurrentUser, volume = 1, onVolumeChange }: PlayerCardProps) {
   const VolumeIcon = volume === 0 ? VolumeX : volume < 0.55 ? Volume1 : Volume2;
+  const { t } = useLanguage();
   return (
     <article className={`glass-panel relative overflow-hidden rounded-2xl p-4 ${player.isSpeaking ? "ring-2 ring-chaos-cyan/70 shadow-cyan" : ""}`}>
       <div className="absolute inset-x-0 top-0 h-px" style={{ backgroundColor: player.character.color }} />
@@ -22,7 +24,7 @@ export function PlayerCard({ player, isHost, isCurrentUser, volume = 1, onVolume
             <h3 className="truncate font-bold text-white">{player.character.name}</h3>
             {isHost && <Crown size={14} className="text-amber-400" />}
           </div>
-          <p className="truncate text-sm text-zinc-500">@{player.username}{isCurrentUser ? " (you)" : ""}</p>
+          <p className="truncate text-sm text-zinc-500">@{player.username}{isCurrentUser ? ` (${t("common.you")})` : ""}</p>
         </div>
         <div className={`rounded-lg p-2 ${player.micEnabled ? "bg-emerald-500/10 text-emerald-400" : "bg-zinc-800 text-zinc-500"}`}>
           {player.isSpeaking ? <Radio size={18} /> : player.micEnabled ? <Mic size={18} /> : <MicOff size={18} />}

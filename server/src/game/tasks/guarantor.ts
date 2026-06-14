@@ -44,13 +44,14 @@ export const guarantor: TaskDefinition = {
           deltas.set(guarantorPlayer!.id, decisions.get(guarantorPlayer!.id) === `trust:${honestId}` ? 3 : -2);
         }
         return {
+          taskId: "guarantor",
           taskName: "The Guarantor",
+          outcomeId: aChoice === bChoice ? (aChoice === "keep" ? "both-kept" : "both-broke") : "mixed-promise",
           summary: aChoice === bChoice ? "The guarantor had no honest side to distinguish." : "One promise held while the other broke.",
-          decisions: participants.map((participant) => ({ playerId: participant.id, playerName: participant.name, choiceLabel: labelChoice(choicesByPlayer, participant.id, decisions.get(participant.id) ?? choicesByPlayer.get(participant.id)![0]!.id) })),
+          decisions: participants.map((participant) => ({ playerId: participant.id, playerName: participant.name, choiceId: decisions.get(participant.id) ?? choicesByPlayer.get(participant.id)![0]!.id, choiceLabel: labelChoice(choicesByPlayer, participant.id, decisions.get(participant.id) ?? choicesByPlayer.get(participant.id)![0]!.id) })),
           scoreChanges: participants.map((participant) => ({ playerId: participant.id, playerName: participant.name, delta: deltas.get(participant.id) ?? 0, reason: participant.id === guarantorPlayer!.id ? "Trust prediction" : "Promise outcome" })),
         };
       },
     };
   },
 };
-

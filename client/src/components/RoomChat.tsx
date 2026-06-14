@@ -2,13 +2,15 @@ import type { ChatMessage, SessionProfile } from "@chaos-club/shared";
 import { MessageSquare, Send } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { socket } from "../services/socket";
+import { useLanguage } from "../i18n/LanguageContext";
 
-export function RoomChat({ profile }: { profile: SessionProfile }) {
+export function RoomChat({ profile, compact = false }: { profile: SessionProfile; compact?: boolean }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const messageListRef = useRef<HTMLDivElement>(null);
+  const { t } = useLanguage();
 
   useEffect(() => {
     const receiveHistory = (history: ChatMessage[]) => setMessages(history);
@@ -43,16 +45,16 @@ export function RoomChat({ profile }: { profile: SessionProfile }) {
   };
 
   return (
-    <section className="glass-panel flex h-[32rem] min-h-0 flex-col overflow-hidden rounded-2xl p-5 xl:h-[calc(100vh-11rem)] xl:max-h-[46rem] xl:min-h-[34rem]">
+    <section className={`glass-panel flex min-h-0 flex-col overflow-hidden rounded-2xl p-5 ${compact ? "h-[22rem] xl:h-[calc(100vh-28rem)] xl:min-h-[18rem]" : "h-[32rem] xl:h-[calc(100vh-11rem)] xl:max-h-[46rem] xl:min-h-[34rem]"}`}>
       <div className="mb-4 flex items-center gap-3 border-b border-white/5 pb-4">
         <div className="rounded-xl bg-chaos-cyan/10 p-2.5 text-chaos-cyan"><MessageSquare size={19} /></div>
-        <div><h2 className="font-bold text-white">Room chat</h2><p className="text-xs text-zinc-500">Messages live until the room closes</p></div>
+        <div><h2 className="font-bold text-white">{t("chat.title")}</h2><p className="text-xs text-zinc-500">{t("chat.description")}</p></div>
       </div>
 
       <div ref={messageListRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-2">
         {messages.length === 0 && (
           <div className="grid h-56 place-items-center text-center">
-            <div><MessageSquare className="mx-auto mb-3 text-zinc-700" size={30} /><p className="text-sm text-zinc-500">No messages yet</p></div>
+            <div><MessageSquare className="mx-auto mb-3 text-zinc-700" size={30} /><p className="text-sm text-zinc-500">{t("chat.empty")}</p></div>
           </div>
         )}
         {messages.map((message) => {
@@ -73,7 +75,7 @@ export function RoomChat({ profile }: { profile: SessionProfile }) {
 
       {error && <p className="mt-3 text-xs text-rose-300">{error}</p>}
       <form onSubmit={submit} className="mt-4 flex gap-2 border-t border-white/5 pt-4">
-        <input className="field min-w-0" maxLength={500} value={content} onChange={(event) => setContent(event.target.value)} placeholder="Write a message..." />
+        <input className="field min-w-0" maxLength={500} value={content} onChange={(event) => setContent(event.target.value)} placeholder={t("chat.placeholder")} />
         <button aria-label="Send message" disabled={!content.trim() || pending} className="grid w-12 shrink-0 place-items-center rounded-xl bg-chaos-violet text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40" type="submit"><Send size={18} /></button>
       </form>
     </section>

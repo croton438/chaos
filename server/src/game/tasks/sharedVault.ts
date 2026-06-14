@@ -36,13 +36,14 @@ export const sharedVault: TaskDefinition = {
           deltas.set(b!.id, bChoice === "run" ? 7 : 0);
         }
         return {
+          taskId: "shared-vault",
           taskName: "Shared Vault",
+          outcomeId: aChoice === bChoice ? (aChoice === "open" ? "mutual-open" : "mutual-run") : "one-ran",
           summary: aChoice === bChoice ? "Both players made the same move." : "One player escaped with the advantage.",
-          decisions: participants.map((participant) => ({ playerId: participant.id, playerName: participant.name, choiceLabel: labelChoice(choicesByPlayer, participant.id, decisions.get(participant.id) ?? "open") })),
+          decisions: participants.map((participant) => ({ playerId: participant.id, playerName: participant.name, choiceId: decisions.get(participant.id) ?? "open", choiceLabel: labelChoice(choicesByPlayer, participant.id, decisions.get(participant.id) ?? "open") })),
           scoreChanges: participants.map((participant) => ({ playerId: participant.id, playerName: participant.name, delta: deltas.get(participant.id) ?? 0, reason: "Vault outcome" })),
         };
       },
     };
   },
 };
-

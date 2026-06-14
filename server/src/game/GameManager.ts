@@ -4,18 +4,20 @@ import type { InternalRound } from "./types.js";
 import { randomChoice } from "./types.js";
 
 const ROUND_DURATION_MS = Number(process.env.GAME_ROUND_DURATION_MS ?? 30_000);
+const INTRO_DURATION_MS = Number(process.env.GAME_INTRO_DURATION_MS ?? 10_000);
 const RESULT_DURATION_MS = Number(process.env.GAME_RESULT_DURATION_MS ?? 6_000);
 const MAX_ROUNDS = 8;
 
 interface InternalGame {
   roomCode: string;
-  status: "playing" | "round_result" | "finished";
+  status: "round_intro" | "playing" | "round_result" | "finished";
   roundNumber: number;
   maxRounds: number;
   scores: Map<string, PlayerScore>;
   selectionCounts: Map<string, number>;
   currentRound: InternalRound | null;
   decisions: Map<string, string>;
+  introEndsAt: number | null;
   roundEndsAt: number | null;
   nextRoundAt: number | null;
   result: RoundResult | null;
@@ -46,13 +48,14 @@ export class GameManager {
     }]));
     const game: InternalGame = {
       roomCode: room.code,
-      status: "playing",
+      status: "round_intro",
       roundNumber: 0,
       maxRounds: MAX_ROUNDS,
       scores,
       selectionCounts: new Map(),
       currentRound: null,
       decisions: new Map(),
+      introEndsAt: null,
       roundEndsAt: null,
       nextRoundAt: null,
       result: null,
@@ -87,6 +90,7 @@ export class GameManager {
       status: game.status,
       roundNumber: game.roundNumber,
       maxRounds: game.maxRounds,
+      introEndsAt: game.introEndsAt,
       roundEndsAt: game.roundEndsAt,
       nextRoundAt: game.nextRoundAt,
       task: round ? {
@@ -127,7 +131,7 @@ export class GameManager {
       return;
     }
     game.roundNumber += 1;
-    game.status = "playing";
+    game.status = "round_intro";
     game.result = null;
     game.nextRoundAt = null;
     game.decisions.clear();
@@ -135,10 +139,19 @@ export class GameManager {
     const definition = availableTasks[Math.floor(Math.random() * availableTasks.length)]!;
     game.currentRound = definition.create({ players: room.players, selectionCounts: game.selectionCounts });
 
+    game.introEndsAt = Date.now() + INTRO_DURATION_MS;
+    game.roundEndsAt = null;
+    game.timer = setTimeout(() => this.beginDecisionPhase(game), INTRO_DURATION_MS);
+    this.publish(game.roomCode);
+  }
+
+  private beginDecisionPhase(game: InternalGame): void {
+    if (game.status !== "round_intro" || !game.currentRound) return;
+    game.status = "playing";
+    game.introEndsAt = null;
     for (const [participantId, choices] of game.currentRound.choicesByPlayer) {
       if (participantId.startsWith("bot:")) game.decisions.set(participantId, randomChoice(choices));
     }
-
     game.roundEndsAt = Date.now() + ROUND_DURATION_MS;
     game.timer = setTimeout(() => this.resolveRound(game), ROUND_DURATION_MS);
     this.publish(game.roomCode);
@@ -156,6 +169,7 @@ export class GameManager {
       if (score) score.points += change.delta;
     }
     game.roundEndsAt = null;
+    game.introEndsAt = null;
 
     if (game.roundNumber >= game.maxRounds) {
       game.status = "finished";

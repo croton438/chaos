@@ -8,11 +8,14 @@ import { GamePanel } from "../components/game/GamePanel";
 import { Shell } from "../components/Shell";
 import { useVoiceChat } from "../hooks/useVoiceChat";
 import { socket } from "../services/socket";
+import { localizeRuntimeMessage, useLanguage } from "../i18n/LanguageContext";
 
 export function RoomScreen({ initialRoom, profile, onLeave }: { initialRoom: Room; profile: SessionProfile; onLeave: () => void }) {
   const [room, setRoom] = useState(initialRoom);
   const [copied, setCopied] = useState(false);
+  const [gameActive, setGameActive] = useState(false);
   const { micEnabled, toggleMic, error, playerVolumes, setPlayerVolume } = useVoiceChat(room);
+  const { language, t } = useLanguage();
 
   useEffect(() => {
     const updateRoom = (nextRoom: Room) => setRoom(nextRoom);
@@ -37,23 +40,24 @@ export function RoomScreen({ initialRoom, profile, onLeave }: { initialRoom: Roo
   };
 
   return (
-    <Shell right={<Button variant="danger" onClick={leave}><LogOut size={17} /> Leave Room</Button>}>
+    <Shell right={<Button variant="danger" onClick={leave}><LogOut size={17} /> {t("common.leave")}</Button>}>
+      {!gameActive && <>
       <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.3em] text-chaos-cyan"><Radio size={14} /> Live room</div>
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.3em] text-chaos-cyan"><Radio size={14} /> {t("room.live")}</div>
           <h1 className="mt-2 text-4xl font-black text-white">{room.name}</h1>
-          <button onClick={copyCode} className="mt-3 flex items-center gap-2 font-mono text-sm tracking-[0.25em] text-zinc-400 transition hover:text-white">{room.code} <Copy size={15} /> <span className="font-sans text-xs tracking-normal text-chaos-cyan">{copied ? "Copied" : ""}</span></button>
+          <button onClick={copyCode} className="mt-3 flex items-center gap-2 font-mono text-sm tracking-[0.25em] text-zinc-400 transition hover:text-white">{room.code} <Copy size={15} /> <span className="font-sans text-xs tracking-normal text-chaos-cyan">{copied ? t("common.copied") : ""}</span></button>
         </div>
         <Button onClick={() => void toggleMic()} variant={micEnabled ? "primary" : "secondary"} className={micEnabled ? "bg-emerald-500 hover:bg-emerald-400" : ""}>
-          {micEnabled ? <Mic size={19} /> : <MicOff size={19} />} {micEnabled ? "Microphone On" : "Enable Microphone"}
+          {micEnabled ? <Mic size={19} /> : <MicOff size={19} />} {micEnabled ? t("room.micOn") : t("room.enableMic")}
         </Button>
       </div>
 
-      {error && <div className="mb-5 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">{error}</div>}
+      {error && <div className="mb-5 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">{localizeRuntimeMessage(error, language)}</div>}
       <div className="grid items-start gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <section className="space-y-6">
           <div>
-            <div className="mb-4 flex items-center justify-between"><h2 className="font-bold text-white">Players</h2><span className="text-sm text-zinc-500">{room.players.length} connected</span></div>
+            <div className="mb-4 flex items-center justify-between"><h2 className="font-bold text-white">{t("common.players")}</h2><span className="text-sm text-zinc-500">{room.players.length} {t("common.connected")}</span></div>
             <div className="grid gap-4 md:grid-cols-2">
               {room.players.map((player) => (
                 <PlayerCard
@@ -67,15 +71,18 @@ export function RoomScreen({ initialRoom, profile, onLeave }: { initialRoom: Roo
               ))}
             </div>
           </div>
-          <GamePanel room={room} profile={profile} />
         </section>
 
         <aside className="space-y-5 xl:sticky xl:top-6">
           <RoomChat profile={profile} />
           <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] p-5">
-            <div className="flex gap-3"><ShieldCheck className="mt-0.5 shrink-0 text-emerald-400" size={20} /><div><p className="text-sm font-semibold text-emerald-200">Peer-to-peer voice</p><p className="mt-1 text-xs leading-5 text-zinc-500">Socket.io carries signaling only. Audio streams travel directly between peers.</p></div></div>
+            <div className="flex gap-3"><ShieldCheck className="mt-0.5 shrink-0 text-emerald-400" size={20} /><div><p className="text-sm font-semibold text-emerald-200">{t("room.voiceTitle")}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{t("room.voiceDescription")}</p></div></div>
           </div>
         </aside>
+      </div>
+      </>}
+      <div className={gameActive ? "" : "mt-6"}>
+        <GamePanel room={room} profile={profile} micEnabled={micEnabled} voiceError={error} playerVolumes={playerVolumes} onToggleMic={() => void toggleMic()} onVolumeChange={setPlayerVolume} onLeave={leave} onActiveChange={setGameActive} />
       </div>
     </Shell>
   );

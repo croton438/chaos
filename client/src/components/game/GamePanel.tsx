@@ -1,20 +1,40 @@
 import type { GameState, Room, SessionProfile } from "@chaos-club/shared";
-import { Clock3, Play, Users } from "lucide-react";
+import { Clock3, LogOut, Mic, MicOff, Play, Radio, Users } from "lucide-react";
 import { useEffect, useState } from "react";
+import { localizeRuntimeMessage, useLanguage } from "../../i18n/LanguageContext";
 import { socket } from "../../services/socket";
+import { Brand } from "../Brand";
 import { Button } from "../Button";
+import { LanguageToggle } from "../LanguageToggle";
+import { PlayerCard } from "../PlayerCard";
+import { RoomChat } from "../RoomChat";
 import { DecisionButtons } from "./DecisionButtons";
 import { GameOver } from "./GameOver";
+import { RoundIntro } from "./RoundIntro";
 import { RoundResult } from "./RoundResult";
 import { Scoreboard } from "./Scoreboard";
 import { TaskCard } from "./TaskCard";
 
-export function GamePanel({ room, profile }: { room: Room; profile: SessionProfile }) {
+interface GamePanelProps {
+  room: Room;
+  profile: SessionProfile;
+  micEnabled: boolean;
+  voiceError: string | null;
+  playerVolumes: Record<string, number>;
+  onToggleMic: () => void;
+  onVolumeChange: (socketId: string, volume: number) => void;
+  onLeave: () => void;
+  onActiveChange: (active: boolean) => void;
+}
+
+export function GamePanel({ room, profile, micEnabled, voiceError, playerVolumes, onToggleMic, onVolumeChange, onLeave, onActiveChange }: GamePanelProps) {
   const [game, setGame] = useState<GameState | null>(null);
   const [now, setNow] = useState(Date.now());
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { language, t } = useLanguage();
   const isHost = room.hostId === profile.id;
+  const isGameActive = Boolean(game);
 
   useEffect(() => {
     const updateGame = (state: GameState) => setGame(state);
@@ -22,6 +42,11 @@ export function GamePanel({ room, profile }: { room: Room; profile: SessionProfi
     socket.emit("game:state-request");
     return () => { socket.off("game:state", updateGame); };
   }, []);
+
+  useEffect(() => {
+    onActiveChange(isGameActive);
+    return () => onActiveChange(false);
+  }, [isGameActive, onActiveChange]);
 
   useEffect(() => {
     if (!game || game.status === "finished") return;
@@ -51,32 +76,54 @@ export function GamePanel({ room, profile }: { room: Room; profile: SessionProfi
     return (
       <section className="glass-panel rounded-3xl p-7 text-center">
         <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-chaos-violet/15 text-chaos-violet"><Play size={26} /></div>
-        <h2 className="mt-4 text-2xl font-black text-white">The table is ready</h2>
-        <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-zinc-500">Eight rounds of deals, betrayal and temporary alliances. Solo games use the House Bot for testing.</p>
-        <div className="mt-5 flex justify-center gap-4 text-xs text-zinc-500"><span className="flex items-center gap-2"><Users size={15} /> {room.players.length}/8 players</span><span className="flex items-center gap-2"><Clock3 size={15} /> 30 sec rounds</span></div>
-        {error && <p className="mt-4 text-sm text-rose-300">{error}</p>}
-        {isHost ? <Button className="mt-6" disabled={pending} onClick={startGame}><Play size={18} /> {pending ? "Starting..." : "Start Game"}</Button> : <p className="mt-6 text-sm text-zinc-600">Waiting for the host to start.</p>}
+        <h2 className="mt-4 text-2xl font-black text-white">{t("game.ready")}</h2>
+        <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-zinc-500">{t("game.readyDescription")}</p>
+        <div className="mt-5 flex justify-center gap-4 text-xs text-zinc-500"><span className="flex items-center gap-2"><Users size={15} /> {room.players.length}/8</span><span className="flex items-center gap-2"><Clock3 size={15} /> {t("game.roundTime")}</span></div>
+        {error && <p className="mt-4 text-sm text-rose-300">{localizeRuntimeMessage(error, language)}</p>}
+        {isHost ? <Button className="mt-6" disabled={pending} onClick={startGame}><Play size={18} /> {pending ? t("game.starting") : t("game.start")}</Button> : <p className="mt-6 text-sm text-zinc-600">{t("game.waitHost")}</p>}
       </section>
     );
   }
 
-  const targetTime = game.status === "playing" ? game.roundEndsAt : game.nextRoundAt;
+  const targetTime = game.status === "round_intro" ? game.introEndsAt : game.status === "playing" ? game.roundEndsAt : game.nextRoundAt;
   const secondsLeft = targetTime ? Math.max(0, Math.ceil((targetTime - now) / 1000)) : 0;
+  const phaseLabel = game.status === "round_intro" ? t("game.intro") : game.status === "playing" ? t("game.decision") : game.status === "round_result" ? t("game.result") : t("game.complete");
 
   return (
-    <section className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 px-5 py-4">
-        <div><p className="text-xs font-bold uppercase tracking-[0.25em] text-chaos-violet">Chaos game</p><p className="mt-1 font-black text-white">Round {game.roundNumber} / {game.maxRounds}</p></div>
-        {game.status !== "finished" && <div className={`flex items-center gap-2 rounded-xl px-4 py-2 font-mono text-xl font-black ${secondsLeft <= 5 ? "bg-rose-500/15 text-rose-300" : "bg-chaos-cyan/10 text-chaos-cyan"}`}><Clock3 size={19} /> {secondsLeft}s</div>}
-      </div>
-      {error && <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-300">{error}</div>}
-      <div className="grid gap-5 lg:grid-cols-[1fr_18rem]">
-        <div className="space-y-5">
-          {game.status === "finished" ? <GameOver game={game} isHost={isHost} onRestart={startGame} /> : game.status === "round_result" && game.result ? <RoundResult result={game.result} /> : game.task ? <><TaskCard task={game.task} /><DecisionButtons choices={game.availableChoices} locked={game.decisionLocked} pending={pending} onChoose={submitDecision} /></> : null}
+    <main className="fixed inset-0 z-50 overflow-y-auto bg-chaos-black">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(139,92,246,0.18),transparent_35rem),radial-gradient(circle_at_90%_80%,rgba(34,211,238,0.12),transparent_30rem)]" />
+      <div className="relative mx-auto min-h-screen max-w-[1800px] px-4 py-4 sm:px-7">
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
+          <Brand compact />
+          <div className="flex items-center gap-3">
+            <div className="hidden text-right sm:block"><p className="text-xs font-bold uppercase tracking-[0.22em] text-chaos-violet">{t("game.title")}</p><p className="text-sm font-semibold text-white">{t("game.round")} {game.roundNumber}/{game.maxRounds} · {phaseLabel}</p></div>
+            {game.status !== "finished" && <div className={`flex items-center gap-2 rounded-xl px-3 py-2 font-mono text-lg font-black ${secondsLeft <= 5 ? "bg-rose-500/15 text-rose-300" : "bg-chaos-cyan/10 text-chaos-cyan"}`}><Clock3 size={18} /> {secondsLeft}s</div>}
+            <LanguageToggle />
+            <Button onClick={onToggleMic} variant={micEnabled ? "primary" : "secondary"} className={micEnabled ? "bg-emerald-500 hover:bg-emerald-400" : ""}>{micEnabled ? <Mic size={18} /> : <MicOff size={18} />}<span className="hidden md:inline">{micEnabled ? t("room.micOn") : t("room.enableMic")}</span></Button>
+            <Button variant="danger" onClick={onLeave}><LogOut size={17} /><span className="hidden lg:inline">{t("common.leave")}</span></Button>
+          </div>
+        </header>
+
+        {(error || voiceError) && <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">{localizeRuntimeMessage(error ?? voiceError, language)}</div>}
+
+        <div className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <section className="space-y-5">
+            {game.status === "finished" ? <GameOver game={game} isHost={isHost} onRestart={startGame} /> : game.status === "round_intro" && game.task ? <RoundIntro task={game.task} /> : game.status === "round_result" && game.result ? <RoundResult result={game.result} /> : game.task ? <><TaskCard task={game.task} /><DecisionButtons choices={game.availableChoices} locked={game.decisionLocked} pending={pending} onChoose={submitDecision} /></> : null}
+
+            <section className="rounded-2xl border border-white/10 bg-black/25 p-4">
+              <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-chaos-cyan"><Radio size={15} /> {t("game.voice")}</div>
+              <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                {room.players.map((player) => <PlayerCard key={player.socketId} player={player} isHost={player.id === room.hostId} isCurrentUser={player.id === profile.id} volume={playerVolumes[player.socketId] ?? 1} onVolumeChange={player.id === profile.id ? undefined : (volume) => onVolumeChange(player.socketId, volume)} />)}
+              </div>
+            </section>
+          </section>
+
+          <aside className="space-y-4 xl:sticky xl:top-4">
+            <Scoreboard scores={game.scores} currentPlayerId={profile.id} />
+            <RoomChat profile={profile} compact />
+          </aside>
         </div>
-        <Scoreboard scores={game.scores} currentPlayerId={profile.id} />
       </div>
-    </section>
+    </main>
   );
 }
-
