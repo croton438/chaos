@@ -1,9 +1,10 @@
 import type { Room, SessionProfile } from "@chaos-club/shared";
-import { Copy, Gamepad2, LogOut, Mic, MicOff, Radio, ShieldCheck } from "lucide-react";
+import { Copy, LogOut, Mic, MicOff, Radio, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { PlayerCard } from "../components/PlayerCard";
 import { RoomChat } from "../components/RoomChat";
+import { GamePanel } from "../components/game/GamePanel";
 import { Shell } from "../components/Shell";
 import { useVoiceChat } from "../hooks/useVoiceChat";
 import { socket } from "../services/socket";
@@ -66,10 +67,7 @@ export function RoomScreen({ initialRoom, profile, onLeave }: { initialRoom: Roo
               ))}
             </div>
           </div>
-          <div className="glass-panel rounded-2xl p-6">
-            <div className="mb-4 flex items-center gap-3"><div className="rounded-xl bg-chaos-violet/15 p-3 text-chaos-violet"><Gamepad2 size={21} /></div><div><h2 className="font-bold text-white">Game stage</h2><p className="text-xs text-zinc-500">Module slot</p></div></div>
-            <div className="grid min-h-52 place-items-center rounded-xl border border-dashed border-white/10 bg-black/20 p-6 text-center"><div><p className="font-semibold text-zinc-300">Game systems will be added here</p><p className="mt-2 text-xs leading-5 text-zinc-600">Tasks, scoring, private chat, auctions, cards and alliances will mount into this area.</p></div></div>
-          </div>
+          <GamePanel room={room} profile={profile} />
         </section>
 
         <aside className="space-y-5 xl:sticky xl:top-6">

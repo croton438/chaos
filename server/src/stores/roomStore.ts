@@ -46,6 +46,9 @@ export class RoomStore {
     if (!room) {
       throw new Error("Room not found. Check the code and try again.");
     }
+    if (room.players.length >= 8 && !room.players.some((player) => player.id === profile.id)) {
+      throw new Error("This room is full. Chaos Club supports up to 8 players.");
+    }
 
     this.leaveBySocket(socketId);
 
@@ -62,6 +65,10 @@ export class RoomStore {
   getBySocket(socketId: string): Room | undefined {
     const code = this.socketRoomIndex.get(socketId);
     return code ? this.rooms.get(code) : undefined;
+  }
+
+  getByCode(roomCode: string): Room | undefined {
+    return this.rooms.get(roomCode.trim().toUpperCase());
   }
 
   updateMic(socketId: string, micEnabled: boolean): Room | undefined {

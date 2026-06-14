@@ -2,6 +2,8 @@
 
 Web-based social voice-chat party game foundation. The current milestone contains identity setup, character creation, in-memory rooms, realtime player state, and peer-to-peer WebRTC voice chat.
 
+The playable MVP now includes an eight-round, server-authoritative game loop with synchronized timers, locked decisions, score resolution, round results, and a final winner. One-player test games use the House Bot; two-player games use the two-player task pool; Guarantor unlocks at three players and Secret Partnership unlocks at four.
+
 ## Stack
 
 - React, TypeScript, Vite
@@ -63,6 +65,17 @@ npm audit
 5. `localhost` is treated as a secure context by browsers, so microphone access works over local HTTP.
 
 For testing from another physical device, serve the client over HTTPS and configure the backend origin. The included public STUN server is enough for many development networks, but production requires a dedicated STUN/TURN service because peer-to-peer connectivity can fail behind strict NAT or firewalls.
+
+## Game test
+
+1. Create a room and remain as host.
+2. Click **Start Game** in the game panel. Starting with one player is supported for development.
+3. Submit the available decision. Decisions are locked and hidden until the round resolves.
+4. A round ends when all required human decisions are submitted or the 30-second server timer expires.
+5. Results remain visible for six seconds, then the next round starts automatically.
+6. After eight rounds, the highest score wins; equal top scores produce a tie.
+
+The task pool contains Fake Contract, Shared Vault, The Guarantor, Hostage Points, and Secret Partnership. Game state is held in backend memory and disappears when the backend restarts.
 
 Optional production TURN variables can be set during the client build:
 

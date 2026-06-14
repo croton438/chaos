@@ -5,9 +5,17 @@ import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Shell } from "../components/Shell";
 
+const avatarLabels: Record<AvatarId, string> = {
+  sprout: "Classic", curls: "Curls", moustache: "Moustache", hair: "Messy Hair", cap: "Cap",
+  beanie: "Beanie", explorer: "Explorer", topHat: "Top Hat", crown: "Crown", goggles: "Goggles",
+  pirate: "Pirate", eyePatch: "Eye Patch", bandana: "Bandana", ninja: "Ninja", wizard: "Wizard",
+  headphones: "Headphones", catPhones: "Cat Phones", sunglasses: "Shades", glasses: "Glasses",
+  chef: "Chef", nurse: "Medic", miner: "Miner", santa: "Santa", robot: "Robot", cracked: "Cracked",
+};
+
 export function CharacterScreen({ username, onContinue }: { username: string; onContinue: (character: Character) => void }) {
   const [name, setName] = useState("");
-  const [avatar, setAvatar] = useState<AvatarId>("mask");
+  const [avatar, setAvatar] = useState<AvatarId>("sprout");
   const [color, setColor] = useState<string>(COLOR_OPTIONS[0]);
 
   const submit = (event: FormEvent) => {
@@ -17,8 +25,8 @@ export function CharacterScreen({ username, onContinue }: { username: string; on
 
   return (
     <Shell right={<span className="text-sm text-zinc-500">Signed in as <strong className="text-zinc-300">@{username}</strong></span>}>
-      <div className="mx-auto grid max-w-4xl gap-8 lg:grid-cols-[0.8fr_1.2fr]">
-        <section className="glass-panel flex min-h-72 flex-col items-center justify-center rounded-3xl p-8 text-center">
+      <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.72fr_1.28fr]">
+        <section className="glass-panel flex min-h-96 flex-col items-center justify-center rounded-3xl p-8 text-center lg:sticky lg:top-8">
           <Avatar avatar={avatar} color={color} size="lg" />
           <h2 className="mt-5 text-2xl font-black text-white">{name.trim() || "Unnamed Agent"}</h2>
           <p className="mt-1 text-sm text-zinc-500">@{username}</p>
@@ -34,10 +42,11 @@ export function CharacterScreen({ username, onContinue }: { username: string; on
           </label>
           <fieldset className="mt-6">
             <legend className="mb-3 text-xs font-bold uppercase tracking-widest text-zinc-500">Avatar</legend>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid max-h-[25rem] grid-cols-3 gap-2 overflow-y-auto pr-2 sm:grid-cols-4 md:grid-cols-5">
               {AVATAR_OPTIONS.map((option) => (
-                <button type="button" key={option} onClick={() => setAvatar(option)} className={`grid place-items-center rounded-2xl border p-3 transition ${avatar === option ? "border-chaos-violet bg-chaos-violet/10" : "border-white/10 bg-white/[0.02] hover:border-white/20"}`}>
+                <button type="button" key={option} title={avatarLabels[option]} onClick={() => setAvatar(option)} className={`grid place-items-center rounded-2xl border p-2 transition ${avatar === option ? "border-chaos-violet bg-chaos-violet/10" : "border-white/10 bg-white/[0.02] hover:border-white/20"}`}>
                   <Avatar avatar={option} color={color} size="sm" />
+                  <span className="mt-1 w-full truncate text-[10px] text-zinc-500">{avatarLabels[option]}</span>
                 </button>
               ))}
             </div>
@@ -58,4 +67,3 @@ export function CharacterScreen({ username, onContinue }: { username: string; on
     </Shell>
   );
 }
-

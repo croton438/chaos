@@ -8,6 +8,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from "@chaos-club/sha
 import { Server } from "socket.io";
 import { registerSocketHandlers } from "./socket/registerSocketHandlers.js";
 import { RoomStore } from "./stores/roomStore.js";
+import { GameManager } from "./game/GameManager.js";
 
 const port = Number(process.env.PORT ?? 3001);
 const clientOrigin = process.env.CLIENT_ORIGIN ?? "http://localhost:5173";
@@ -31,7 +32,19 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: { origin: allowOrigin, methods: ["GET", "POST"] },
 });
 
-io.on("connection", (socket) => registerSocketHandlers(io, socket, roomStore));
+const gameManager = new GameManager(
+  (roomCode) => roomStore.getByCode(roomCode),
+  (roomCode) => {
+    const room = roomStore.getByCode(roomCode);
+    if (!room) return;
+    for (const player of room.players) {
+      const state = gameManager.getState(roomCode, player.id);
+      if (state) io.to(player.socketId).emit("game:state", state);
+    }
+  },
+);
+
+io.on("connection", (socket) => registerSocketHandlers(io, socket, roomStore, gameManager));
 
 const clientDist = resolve(dirname(fileURLToPath(import.meta.url)), "../../client/dist");
 if (existsSync(clientDist)) {
