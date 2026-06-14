@@ -14,7 +14,8 @@ export function RoomScreen({ initialRoom, profile, onLeave }: { initialRoom: Roo
   const [room, setRoom] = useState(initialRoom);
   const [copied, setCopied] = useState(false);
   const [gameActive, setGameActive] = useState(false);
-  const { micEnabled, toggleMic, error, playerVolumes, setPlayerVolume } = useVoiceChat(room);
+  const [voiceGroupPlayerIds, setVoiceGroupPlayerIds] = useState<string[] | undefined>();
+  const { micEnabled, toggleMic, error, playerVolumes, setPlayerVolume } = useVoiceChat(room, voiceGroupPlayerIds);
   const { language, t } = useLanguage();
 
   useEffect(() => {
@@ -82,7 +83,7 @@ export function RoomScreen({ initialRoom, profile, onLeave }: { initialRoom: Roo
       </div>
       </>}
       <div className={gameActive ? "" : "mt-6"}>
-        <GamePanel room={room} profile={profile} micEnabled={micEnabled} voiceError={error} playerVolumes={playerVolumes} onToggleMic={() => void toggleMic()} onVolumeChange={setPlayerVolume} onLeave={leave} onActiveChange={setGameActive} />
+        <GamePanel room={room} profile={profile} micEnabled={micEnabled} voiceError={error} playerVolumes={playerVolumes} onToggleMic={() => void toggleMic()} onVolumeChange={setPlayerVolume} onLeave={leave} onActiveChange={setGameActive} onVoiceGroupChange={setVoiceGroupPlayerIds} />
       </div>
     </Shell>
   );

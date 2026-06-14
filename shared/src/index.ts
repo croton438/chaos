@@ -48,14 +48,17 @@ export interface ChatMessage {
   createdAt: number;
 }
 
-export type GameStatus = "waiting" | "round_intro" | "playing" | "round_result" | "finished";
+export type GameStatus = "agenda" | "market" | "decision" | "reveal" | "accountability" | "final_reveal" | "finished";
+export type AbilityId = "ear" | "disinformant" | "notary" | "vault" | "detective";
 
-export interface PlayerScore {
+export interface PlayerStanding {
   playerId: string;
   username: string;
   characterName: string;
   color: string;
-  points: number;
+  influence: number;
+  trust: number;
+  leverageCount: number;
 }
 
 export interface GameParticipant {
@@ -91,8 +94,43 @@ export interface RoundDecisionReveal {
 export interface RoundScoreChange {
   playerId: string;
   playerName: string;
-  delta: number;
+  influenceDelta: number;
+  trustDelta: number;
   reason: string;
+}
+
+export interface LeverageCard {
+  id: string;
+  targetPlayerId: string;
+  targetName: string;
+  partnerPlayerId: string;
+  partnerName: string;
+  roundNumber: number;
+  note: string;
+  source: "meeting" | "betrayal" | "coalition";
+}
+
+export interface LeverageEvent {
+  cardId: string;
+  ownerId: string;
+  ownerName: string;
+  targetPlayerId: string;
+  targetName: string;
+}
+
+export interface PrivateMeetingSummary {
+  id: string;
+  participantIds: string[];
+  participantNames: string[];
+  listenerPresent: boolean;
+}
+
+export interface MeetingInvitation {
+  requestId: string;
+  requesterId: string;
+  requesterName: string;
+  participantIds: string[];
+  participantNames: string[];
 }
 
 export interface RoundResult {
@@ -101,7 +139,8 @@ export interface RoundResult {
   outcomeId: string;
   summary: string;
   decisions: RoundDecisionReveal[];
-  scoreChanges: RoundScoreChange[];
+  resourceChanges: RoundScoreChange[];
+  leverageEvents: LeverageEvent[];
 }
 
 export interface GameState {
@@ -109,16 +148,22 @@ export interface GameState {
   status: GameStatus;
   roundNumber: number;
   maxRounds: number;
-  introEndsAt: number | null;
-  roundEndsAt: number | null;
-  nextRoundAt: number | null;
+  phaseEndsAt: number | null;
   task: PublicTask | null;
-  scores: PlayerScore[];
+  standings: PlayerStanding[];
   lockedPlayerIds: string[];
   availableChoices: GameChoice[];
   decisionLocked: boolean;
   result: RoundResult | null;
   winnerIds: string[];
+  myAbility: AbilityId;
+  myLeverage: LeverageCard[];
+  activeMeeting: PrivateMeetingSummary | null;
+  meetingInvitation: MeetingInvitation | null;
+  meetingRequestPending: boolean;
+  voiceGroupPlayerIds: string[];
+  isFinalRound: boolean;
+  leverageEvents: LeverageEvent[];
 }
 
 export interface SessionProfile {
@@ -151,11 +196,21 @@ export interface ClientToServerEvents {
   "game:start": (ack: Ack<GameState>) => void;
   "game:state-request": () => void;
   "game:decision": (choiceId: string, ack: Ack<GameState>) => void;
+  "game:meeting-request": (targetPlayerIds: string[], ack: Ack<GameState>) => void;
+  "game:meeting-respond": (requestId: string, accepted: boolean, ack: Ack<GameState>) => void;
+  "game:meeting-leave": (ack: Ack<GameState>) => void;
+  "game:leverage-create": (payload: CreateLeveragePayload, ack: Ack<GameState>) => void;
+  "game:leverage-play": (cardId: string, ack: Ack<GameState>) => void;
   "player:mic": (enabled: boolean) => void;
   "player:speaking": (speaking: boolean) => void;
   "voice:offer": (payload: OutgoingVoiceDescription) => void;
   "voice:answer": (payload: OutgoingVoiceDescription) => void;
   "voice:ice-candidate": (payload: OutgoingVoiceCandidate) => void;
+}
+
+export interface CreateLeveragePayload {
+  targetPlayerId: string;
+  note: string;
 }
 
 export interface CreateRoomPayload {

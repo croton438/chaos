@@ -1,6 +1,7 @@
 import type {
   GameChoice,
   GameParticipant,
+  LeverageCard,
   Player,
   RoundResult,
 } from "@chaos-club/shared";
@@ -18,7 +19,19 @@ export interface InternalRound {
   choicesByPlayer: Map<string, GameChoice[]>;
   privateHints: Map<string, string>;
   metadata: Record<string, unknown>;
-  resolve: (decisions: Map<string, string>) => RoundResult;
+  resolve: (decisions: Map<string, string>) => TaskResolution;
+}
+
+export interface LeverageGrant {
+  ownerId: string;
+  targetId: string;
+  partnerId: string;
+  source: LeverageCard["source"];
+}
+
+export interface TaskResolution {
+  result: RoundResult;
+  leverageGrants: LeverageGrant[];
 }
 
 export interface TaskDefinition {
@@ -35,6 +48,14 @@ export const HOUSE_BOT: GameParticipant = {
   isBot: true,
   role: "The House",
 };
+
+export function createHouseBot(index = 0): GameParticipant {
+  return {
+    ...HOUSE_BOT,
+    id: `bot:house:${index}`,
+    name: index === 0 ? "House Bot" : `House Bot ${index + 1}`,
+  };
+}
 
 export function toParticipant(player: Player, role?: string): GameParticipant {
   return {
@@ -70,4 +91,3 @@ export function labelChoice(choicesByPlayer: Map<string, GameChoice[]>, playerId
 export function randomChoice(choices: GameChoice[]): string {
   return choices[Math.floor(Math.random() * choices.length)]!.id;
 }
-

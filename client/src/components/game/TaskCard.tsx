@@ -7,7 +7,7 @@ import { useLanguage } from "../../i18n/LanguageContext";
 export function TaskCard({ task, detailed = false }: { task: PublicTask; detailed?: boolean }) {
   const { language, t } = useLanguage();
   const copy = getTaskCopy(task, language);
-  const privateHint = getPrivateHint(task, language);
+  const privateHint = getPrivateHint(task);
   return (
     <section className="relative overflow-hidden rounded-3xl border border-chaos-violet/25 bg-gradient-to-br from-chaos-violet/15 via-black/35 to-chaos-cyan/5 p-6 shadow-neon">
       <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-chaos-violet/10 blur-3xl" />

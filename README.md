@@ -1,10 +1,10 @@
 # Chaos Club
 
-Web-based social voice-chat party game foundation. The current milestone contains identity setup, character creation, in-memory rooms, realtime player state, and peer-to-peer WebRTC voice chat.
+Web-based social voice-chat power game with identity setup, character creation, in-memory rooms, realtime state, and peer-to-peer WebRTC voice chat.
 
-The playable MVP now includes an eight-round, server-authoritative game loop with synchronized timers, locked decisions, score resolution, round results, and a final winner. One-player test games use the House Bot; two-player games use the two-player task pool; Guarantor unlocks at three players and Secret Partnership unlocks at four.
+The playable MVP follows `chaos-club-oyun-tasarimi.md`: players begin with 10 Influence and 4 Trust, create private Leverage records during Market meetings, make locked decisions, and can spend Leverage during Reveal phases. Games last six rounds for up to five players and eight rounds for six to eight players, followed by a Final Reveal. One-player and two-player test games remain supported through House Bots.
 
-The interface defaults to Turkish and can be switched to English with the persistent `TR / EN` control. Once a game starts, the room is replaced by a full-screen game stage. Every round begins with a synchronized 10-second briefing containing the objective, scoring rules, negotiation guidance, participants, and private role information before the 30-second decision phase.
+The interface defaults to Turkish and can be switched to English with the persistent `TR / EN` control. Once a game starts, the room is replaced by a full-screen stage. Each round moves through Agenda Opening, Market, Secret Decision, Reveal, and Accountability. Private Market rooms isolate WebRTC audio while publicly showing who is meeting.
 
 ## Stack
 
@@ -72,12 +72,14 @@ For testing from another physical device, serve the client over HTTPS and config
 
 1. Create a room and remain as host.
 2. Click **Start Game** in the game panel. Starting with one player is supported for development.
-3. Submit the available decision. Decisions are locked and hidden until the round resolves.
-4. A round ends when all required human decisions are submitted or the 30-second server timer expires.
-5. Results remain visible for six seconds, then the next round starts automatically.
-6. After eight rounds, the highest score wins; equal top scores produce a tie.
+3. During Market, invite one or two players to a private voice room. Other players remain in the public voice channel.
+4. Record an optional private note as Leverage, then submit the hidden task decision.
+5. During Reveal, play Leverage to gain 1 Influence and remove 2 Influence from its target at the cost of 1 Trust.
+6. After the last normal round, use remaining cards during the Final Reveal. Highest Influence wins.
 
-The task pool contains Fake Contract, Shared Vault, The Guarantor, Hostage Points, and Secret Partnership. Game state is held in backend memory and disappears when the backend restarts.
+The MVP task pool rotates through Single Veto, Paired Confrontation, and Coalition Negotiation. Game state is held in backend memory and disappears when the backend restarts.
+
+Default phase durations can be changed through `GAME_AGENDA_DURATION_MS`, `GAME_MARKET_DURATION_MS`, `GAME_DECISION_DURATION_MS`, `GAME_REVEAL_DURATION_MS`, `GAME_ACCOUNTABILITY_DURATION_MS`, and `GAME_FINAL_REVEAL_DURATION_MS`.
 
 Optional production TURN variables can be set during the client build:
 
@@ -107,7 +109,8 @@ chaos/
 |   `-- ...                   Vite, Tailwind, TypeScript config
 |-- server/
 |   |-- src/
-|   |   |-- engines/          Future game engine boundary
+|   |   |-- game/             Server-authoritative rounds and task modules
+|   |   |-- engines/          Future auction, alliance, and card engines
 |   |   |-- models/           Domain model exports
 |   |   |-- socket/           Realtime transport handlers
 |   |   |-- stores/           In-memory room state
@@ -121,6 +124,6 @@ chaos/
 
 ## Extension boundaries
 
-Add task, scoring, private chat, auction, card, alliance, and sabotage logic as isolated modules under `server/src/engines`. Keep game rules independent from Socket.io; handlers should translate realtime events into engine calls. Add matching shared event contracts in `shared/src/index.ts` and mount UI modules in the room's game-stage area.
+Add auctions, alliances, sabotage cards, debt records, and advanced ability enforcement as isolated modules under `server/src/engines`. Keep game rules independent from Socket.io; handlers should translate realtime events into engine calls. Add matching shared event contracts in `shared/src/index.ts` and mount UI modules in the full-screen game stage.
 
 For Electron later, build the Vite client and load `client/dist` from an Electron main process. Keep server deployment separate for online multiplayer, or start a local server process only for explicitly offline/LAN modes.

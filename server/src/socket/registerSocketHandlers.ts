@@ -91,6 +91,51 @@ export function registerSocketHandlers(io: ChaosServer, socket: ChaosSocket, roo
     }
   });
 
+  socket.on("game:meeting-request", (targetPlayerIds, ack) => {
+    try {
+      const { room, player } = getCurrentPlayer(socket, roomStore);
+      ack({ ok: true, data: gameManager.requestMeeting(room.code, player.id, targetPlayerIds) });
+    } catch (error) {
+      ack({ ok: false, error: getErrorMessage(error) });
+    }
+  });
+
+  socket.on("game:meeting-respond", (requestId, accepted, ack) => {
+    try {
+      const { room, player } = getCurrentPlayer(socket, roomStore);
+      ack({ ok: true, data: gameManager.respondToMeeting(room.code, player.id, requestId, accepted) });
+    } catch (error) {
+      ack({ ok: false, error: getErrorMessage(error) });
+    }
+  });
+
+  socket.on("game:meeting-leave", (ack) => {
+    try {
+      const { room, player } = getCurrentPlayer(socket, roomStore);
+      ack({ ok: true, data: gameManager.leaveMeeting(room.code, player.id) });
+    } catch (error) {
+      ack({ ok: false, error: getErrorMessage(error) });
+    }
+  });
+
+  socket.on("game:leverage-create", ({ targetPlayerId, note }, ack) => {
+    try {
+      const { room, player } = getCurrentPlayer(socket, roomStore);
+      ack({ ok: true, data: gameManager.createLeverage(room.code, player.id, targetPlayerId, note) });
+    } catch (error) {
+      ack({ ok: false, error: getErrorMessage(error) });
+    }
+  });
+
+  socket.on("game:leverage-play", (cardId, ack) => {
+    try {
+      const { room, player } = getCurrentPlayer(socket, roomStore);
+      ack({ ok: true, data: gameManager.playLeverage(room.code, player.id, cardId) });
+    } catch (error) {
+      ack({ ok: false, error: getErrorMessage(error) });
+    }
+  });
+
   socket.on("player:mic", (enabled) => {
     const room = roomStore.updateMic(socket.id, enabled);
     if (room) io.to(room.code).emit("room:state", room);
@@ -141,4 +186,11 @@ function leaveCurrentRoom(
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unexpected server error.";
+}
+
+function getCurrentPlayer(socket: ChaosSocket, roomStore: RoomStore) {
+  const room = roomStore.getBySocket(socket.id);
+  const player = room?.players.find((candidate) => candidate.socketId === socket.id);
+  if (!room || !player) throw new Error("You must be in a room.");
+  return { room, player };
 }

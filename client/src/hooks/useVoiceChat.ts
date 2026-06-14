@@ -1,5 +1,5 @@
 import type { Room } from "@chaos-club/shared";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { socket } from "../services/socket";
 
 interface PeerNegotiationState {
@@ -27,7 +27,7 @@ function getIceServers(): RTCIceServer[] {
 
 const peerConfig: RTCConfiguration = { iceServers: getIceServers() };
 
-export function useVoiceChat(room: Room) {
+export function useVoiceChat(room: Room, voiceGroupPlayerIds?: string[]) {
   const [micEnabled, setMicEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [playerVolumes, setPlayerVolumes] = useState<Record<string, number>>({});
@@ -37,6 +37,12 @@ export function useVoiceChat(room: Room) {
   const audioRef = useRef(new Map<string, HTMLAudioElement>());
   const pendingCandidatesRef = useRef(new Map<string, RTCIceCandidateInit[]>());
   const speakingCleanupRef = useRef<(() => void) | null>(null);
+  const allowedSocketIds = useMemo(() => {
+    const allowedPlayerIds = new Set(voiceGroupPlayerIds ?? room.players.map((player) => player.id));
+    return new Set(room.players.filter((player) => allowedPlayerIds.has(player.id)).map((player) => player.socketId));
+  }, [room.players, voiceGroupPlayerIds]);
+  const allowedSocketIdsRef = useRef(allowedSocketIds);
+  allowedSocketIdsRef.current = allowedSocketIds;
 
   const attachRemoteStream = useCallback((socketId: string, stream: MediaStream) => {
     let audio = audioRef.current.get(socketId);
@@ -48,6 +54,7 @@ export function useVoiceChat(room: Room) {
       audioRef.current.set(socketId, audio);
     }
     audio.srcObject = stream;
+    audio.muted = !allowedSocketIdsRef.current.has(socketId);
     void audio.play().catch(() => {
       setError("Remote audio is ready. Click anywhere on the page, then toggle your microphone once.");
     });
@@ -175,6 +182,17 @@ export function useVoiceChat(room: Room) {
   }, [createPeer, room.players]);
 
   useEffect(() => {
+    for (const [remoteSocketId, audio] of audioRef.current) {
+      audio.muted = !allowedSocketIds.has(remoteSocketId);
+    }
+    const track = streamRef.current?.getAudioTracks()[0] ?? null;
+    void Promise.all([...peersRef.current].map(async ([remoteSocketId, state]) => {
+      const transceiver = state.peer.getTransceivers().find((item) => item.receiver.track.kind === "audio");
+      if (transceiver) await transceiver.sender.replaceTrack(allowedSocketIds.has(remoteSocketId) ? track : null);
+    }));
+  }, [allowedSocketIds]);
+
+  useEffect(() => {
     const onOffer = ({ fromSocketId, description }: { fromSocketId: string; description: RTCSessionDescriptionInit }) => {
       void applyDescription(fromSocketId, description).catch(() => setError("Voice offer negotiation failed."));
     };
@@ -258,11 +276,11 @@ export function useVoiceChat(room: Room) {
       streamRef.current = stream;
       const track = stream.getAudioTracks()[0];
 
-      for (const state of peersRef.current.values()) {
+      for (const [remoteSocketId, state] of peersRef.current) {
         const transceiver = state.peer.getTransceivers().find((item) => item.receiver.track.kind === "audio");
         if (transceiver && track) {
-          await transceiver.sender.replaceTrack(track);
-        } else if (track) {
+          await transceiver.sender.replaceTrack(allowedSocketIdsRef.current.has(remoteSocketId) ? track : null);
+        } else if (track && allowedSocketIdsRef.current.has(remoteSocketId)) {
           state.peer.addTrack(track, stream);
         }
       }
