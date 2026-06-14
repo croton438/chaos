@@ -41,6 +41,20 @@ export function registerSocketHandlers(io: ChaosServer, socket: ChaosSocket, roo
 
   socket.on("room:leave", () => leaveCurrentRoom(io, socket, roomStore, publishLobby));
 
+  socket.on("room:chat-list", () => {
+    socket.emit("room:chat-history", roomStore.getChatHistory(socket.id));
+  });
+
+  socket.on("room:chat-send", (content, ack) => {
+    try {
+      const message = roomStore.addChatMessage(socket.id, content);
+      ack({ ok: true, data: message });
+      io.to(message.roomCode).emit("room:chat-message", message);
+    } catch (error) {
+      ack({ ok: false, error: getErrorMessage(error) });
+    }
+  });
+
   socket.on("player:mic", (enabled) => {
     const room = roomStore.updateMic(socket.id, enabled);
     if (room) io.to(room.code).emit("room:state", room);

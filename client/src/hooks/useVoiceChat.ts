@@ -9,6 +9,8 @@ const peerConfig: RTCConfiguration = {
 export function useVoiceChat(room: Room) {
   const [micEnabled, setMicEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [playerVolumes, setPlayerVolumes] = useState<Record<string, number>>({});
+  const playerVolumesRef = useRef<Record<string, number>>({});
   const streamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef(new Map<string, RTCPeerConnection>());
   const audioRef = useRef(new Map<string, HTMLAudioElement>());
@@ -21,12 +23,21 @@ export function useVoiceChat(room: Room) {
       audio = new Audio();
       audio.autoplay = true;
       audio.setAttribute("playsinline", "true");
+      audio.volume = playerVolumesRef.current[socketId] ?? 1;
       audioRef.current.set(socketId, audio);
     }
     audio.srcObject = stream;
     void audio.play().catch(() => {
       setError("Remote audio is ready. Interact with the page if your browser blocks autoplay.");
     });
+  }, []);
+
+  const setPlayerVolume = useCallback((socketId: string, volume: number) => {
+    const normalizedVolume = Math.min(1, Math.max(0, volume));
+    playerVolumesRef.current[socketId] = normalizedVolume;
+    setPlayerVolumes((current) => ({ ...current, [socketId]: normalizedVolume }));
+    const audio = audioRef.current.get(socketId);
+    if (audio) audio.volume = normalizedVolume;
   }, []);
 
   const createPeer = useCallback((remoteSocketId: string) => {
@@ -209,5 +220,5 @@ export function useVoiceChat(room: Room) {
     socket.emit("player:mic", false);
   }, []);
 
-  return { micEnabled, toggleMic, error };
+  return { micEnabled, toggleMic, error, playerVolumes, setPlayerVolume };
 }

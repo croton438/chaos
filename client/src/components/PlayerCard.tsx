@@ -1,8 +1,17 @@
 import type { Player } from "@chaos-club/shared";
-import { Crown, Mic, MicOff, Radio } from "lucide-react";
+import { Crown, Mic, MicOff, Radio, Volume1, Volume2, VolumeX } from "lucide-react";
 import { Avatar } from "./Avatar";
 
-export function PlayerCard({ player, isHost, isCurrentUser }: { player: Player; isHost: boolean; isCurrentUser: boolean }) {
+interface PlayerCardProps {
+  player: Player;
+  isHost: boolean;
+  isCurrentUser: boolean;
+  volume?: number;
+  onVolumeChange?: (volume: number) => void;
+}
+
+export function PlayerCard({ player, isHost, isCurrentUser, volume = 1, onVolumeChange }: PlayerCardProps) {
+  const VolumeIcon = volume === 0 ? VolumeX : volume < 0.55 ? Volume1 : Volume2;
   return (
     <article className={`glass-panel relative overflow-hidden rounded-2xl p-4 ${player.isSpeaking ? "ring-2 ring-chaos-cyan/70 shadow-cyan" : ""}`}>
       <div className="absolute inset-x-0 top-0 h-px" style={{ backgroundColor: player.character.color }} />
@@ -19,7 +28,21 @@ export function PlayerCard({ player, isHost, isCurrentUser }: { player: Player; 
           {player.isSpeaking ? <Radio size={18} /> : player.micEnabled ? <Mic size={18} /> : <MicOff size={18} />}
         </div>
       </div>
+      {!isCurrentUser && onVolumeChange && (
+        <label className="mt-4 flex items-center gap-3 border-t border-white/5 pt-3">
+          <VolumeIcon size={16} className="shrink-0 text-zinc-500" />
+          <input
+            aria-label={`${player.character.name} volume`}
+            className="h-1.5 w-full cursor-pointer accent-chaos-violet"
+            type="range"
+            min="0"
+            max="100"
+            value={Math.round(volume * 100)}
+            onChange={(event) => onVolumeChange(Number(event.target.value) / 100)}
+          />
+          <span className="w-9 text-right text-xs tabular-nums text-zinc-500">{Math.round(volume * 100)}%</span>
+        </label>
+      )}
     </article>
   );
 }
-

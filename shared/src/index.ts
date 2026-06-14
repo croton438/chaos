@@ -32,6 +32,17 @@ export interface Room extends Omit<RoomSummary, "playerCount"> {
   players: Player[];
 }
 
+export interface ChatMessage {
+  id: string;
+  roomCode: string;
+  playerId: string;
+  username: string;
+  characterName: string;
+  color: string;
+  content: string;
+  createdAt: number;
+}
+
 export interface SessionProfile {
   id: string;
   username: string;
@@ -44,6 +55,8 @@ export interface ServerToClientEvents {
   "lobby:rooms": (rooms: RoomSummary[]) => void;
   "room:state": (room: Room) => void;
   "room:closed": (message: string) => void;
+  "room:chat-history": (messages: ChatMessage[]) => void;
+  "room:chat-message": (message: ChatMessage) => void;
   "voice:offer": (payload: VoiceDescriptionPayload) => void;
   "voice:answer": (payload: VoiceDescriptionPayload) => void;
   "voice:ice-candidate": (payload: VoiceCandidatePayload) => void;
@@ -54,6 +67,8 @@ export interface ClientToServerEvents {
   "room:create": (payload: CreateRoomPayload, ack: Ack<Room>) => void;
   "room:join": (payload: JoinRoomPayload, ack: Ack<Room>) => void;
   "room:leave": () => void;
+  "room:chat-list": () => void;
+  "room:chat-send": (content: string, ack: Ack<ChatMessage>) => void;
   "player:mic": (enabled: boolean) => void;
   "player:speaking": (speaking: boolean) => void;
   "voice:offer": (payload: OutgoingVoiceDescription) => void;
@@ -90,4 +105,3 @@ export interface VoiceCandidatePayload {
   fromSocketId: string;
   candidate: RTCIceCandidateInit;
 }
-

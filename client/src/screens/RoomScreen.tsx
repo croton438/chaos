@@ -3,6 +3,7 @@ import { Copy, Gamepad2, LogOut, Mic, MicOff, Radio, ShieldCheck } from "lucide-
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { PlayerCard } from "../components/PlayerCard";
+import { RoomChat } from "../components/RoomChat";
 import { Shell } from "../components/Shell";
 import { useVoiceChat } from "../hooks/useVoiceChat";
 import { socket } from "../services/socket";
@@ -10,7 +11,7 @@ import { socket } from "../services/socket";
 export function RoomScreen({ initialRoom, profile, onLeave }: { initialRoom: Room; profile: SessionProfile; onLeave: () => void }) {
   const [room, setRoom] = useState(initialRoom);
   const [copied, setCopied] = useState(false);
-  const { micEnabled, toggleMic, error } = useVoiceChat(room);
+  const { micEnabled, toggleMic, error, playerVolumes, setPlayerVolume } = useVoiceChat(room);
 
   useEffect(() => {
     const updateRoom = (nextRoom: Room) => setRoom(nextRoom);
@@ -52,11 +53,21 @@ export function RoomScreen({ initialRoom, profile, onLeave }: { initialRoom: Roo
         <section>
           <div className="mb-4 flex items-center justify-between"><h2 className="font-bold text-white">Players</h2><span className="text-sm text-zinc-500">{room.players.length} connected</span></div>
           <div className="grid gap-4 md:grid-cols-2">
-            {room.players.map((player) => <PlayerCard key={player.socketId} player={player} isHost={player.id === room.hostId} isCurrentUser={player.id === profile.id} />)}
+            {room.players.map((player) => (
+              <PlayerCard
+                key={player.socketId}
+                player={player}
+                isHost={player.id === room.hostId}
+                isCurrentUser={player.id === profile.id}
+                volume={playerVolumes[player.socketId] ?? 1}
+                onVolumeChange={player.id === profile.id ? undefined : (volume) => setPlayerVolume(player.socketId, volume)}
+              />
+            ))}
           </div>
         </section>
 
         <aside className="space-y-5">
+          <RoomChat profile={profile} />
           <div className="glass-panel rounded-2xl p-6">
             <div className="mb-4 flex items-center gap-3"><div className="rounded-xl bg-chaos-violet/15 p-3 text-chaos-violet"><Gamepad2 size={21} /></div><div><h2 className="font-bold text-white">Game stage</h2><p className="text-xs text-zinc-500">Module slot</p></div></div>
             <div className="grid min-h-52 place-items-center rounded-xl border border-dashed border-white/10 bg-black/20 p-6 text-center"><div><p className="font-semibold text-zinc-300">Game systems will be added here</p><p className="mt-2 text-xs leading-5 text-zinc-600">Tasks, scoring, private chat, auctions, cards and alliances will mount into this area.</p></div></div>
@@ -69,4 +80,3 @@ export function RoomScreen({ initialRoom, profile, onLeave }: { initialRoom: Roo
     </Shell>
   );
 }
-

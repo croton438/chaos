@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import type { Player, Room, RoomSummary, SessionProfile } from "@chaos-club/shared";
+import type { ChatMessage, Player, Room, RoomSummary, SessionProfile } from "@chaos-club/shared";
 
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 export class RoomStore {
   private readonly rooms = new Map<string, Room>();
   private readonly socketRoomIndex = new Map<string, string>();
+  private readonly chatHistory = new Map<string, ChatMessage[]>();
 
   list(): RoomSummary[] {
     return [...this.rooms.values()]
@@ -33,6 +34,7 @@ export class RoomStore {
     };
 
     this.rooms.set(room.code, room);
+    this.chatHistory.set(room.code, []);
     this.socketRoomIndex.set(socketId, room.code);
     return room;
   }
@@ -79,6 +81,37 @@ export class RoomStore {
     return room;
   }
 
+  getChatHistory(socketId: string): ChatMessage[] {
+    const room = this.getBySocket(socketId);
+    return room ? [...(this.chatHistory.get(room.code) ?? [])] : [];
+  }
+
+  addChatMessage(socketId: string, rawContent: string): ChatMessage {
+    const room = this.getBySocket(socketId);
+    const player = room?.players.find((candidate) => candidate.socketId === socketId);
+    if (!room || !player) throw new Error("You must be in a room to send messages.");
+
+    const content = rawContent.trim().replace(/\s+/g, " ");
+    if (!content) throw new Error("Message cannot be empty.");
+    if (content.length > 500) throw new Error("Message cannot exceed 500 characters.");
+
+    const message: ChatMessage = {
+      id: randomUUID(),
+      roomCode: room.code,
+      playerId: player.id,
+      username: player.username,
+      characterName: player.character.name,
+      color: player.character.color,
+      content,
+      createdAt: Date.now(),
+    };
+    const history = this.chatHistory.get(room.code) ?? [];
+    history.push(message);
+    if (history.length > 100) history.splice(0, history.length - 100);
+    this.chatHistory.set(room.code, history);
+    return message;
+  }
+
   leaveBySocket(socketId: string): { room?: Room; closedCode?: string } {
     const code = this.socketRoomIndex.get(socketId);
     if (!code) return {};
@@ -90,6 +123,7 @@ export class RoomStore {
     room.players = room.players.filter((player) => player.socketId !== socketId);
     if (room.players.length === 0) {
       this.rooms.delete(code);
+      this.chatHistory.delete(code);
       return { closedCode: code };
     }
 
@@ -120,4 +154,3 @@ export class RoomStore {
     return code;
   }
 }
-
