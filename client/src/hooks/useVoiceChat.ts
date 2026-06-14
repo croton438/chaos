@@ -2,9 +2,30 @@ import type { Room } from "@chaos-club/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { socket } from "../services/socket";
 
-const peerConfig: RTCConfiguration = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-};
+interface PeerNegotiationState {
+  peer: RTCPeerConnection;
+  polite: boolean;
+  makingOffer: boolean;
+  ignoreOffer: boolean;
+  settingRemoteAnswer: boolean;
+}
+
+function getIceServers(): RTCIceServer[] {
+  const servers: RTCIceServer[] = [
+    { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
+  ];
+  const turnUrl = import.meta.env.VITE_TURN_URL?.trim();
+  if (turnUrl) {
+    servers.push({
+      urls: turnUrl,
+      username: import.meta.env.VITE_TURN_USERNAME?.trim(),
+      credential: import.meta.env.VITE_TURN_CREDENTIAL?.trim(),
+    });
+  }
+  return servers;
+}
+
+const peerConfig: RTCConfiguration = { iceServers: getIceServers() };
 
 export function useVoiceChat(room: Room) {
   const [micEnabled, setMicEnabled] = useState(false);
@@ -12,7 +33,7 @@ export function useVoiceChat(room: Room) {
   const [playerVolumes, setPlayerVolumes] = useState<Record<string, number>>({});
   const playerVolumesRef = useRef<Record<string, number>>({});
   const streamRef = useRef<MediaStream | null>(null);
-  const peersRef = useRef(new Map<string, RTCPeerConnection>());
+  const peersRef = useRef(new Map<string, PeerNegotiationState>());
   const audioRef = useRef(new Map<string, HTMLAudioElement>());
   const pendingCandidatesRef = useRef(new Map<string, RTCIceCandidateInit[]>());
   const speakingCleanupRef = useRef<(() => void) | null>(null);
@@ -28,7 +49,7 @@ export function useVoiceChat(room: Room) {
     }
     audio.srcObject = stream;
     void audio.play().catch(() => {
-      setError("Remote audio is ready. Interact with the page if your browser blocks autoplay.");
+      setError("Remote audio is ready. Click anywhere on the page, then toggle your microphone once.");
     });
   }, []);
 
@@ -45,14 +66,14 @@ export function useVoiceChat(room: Room) {
     if (existing) return existing;
 
     const peer = new RTCPeerConnection(peerConfig);
-    peersRef.current.set(remoteSocketId, peer);
-
-    const tracks = streamRef.current?.getAudioTracks() ?? [];
-    if (tracks.length > 0 && streamRef.current) {
-      tracks.forEach((track) => peer.addTrack(track, streamRef.current!));
-    } else {
-      peer.addTransceiver("audio", { direction: "recvonly" });
-    }
+    const state: PeerNegotiationState = {
+      peer,
+      polite: Boolean(socket.id && socket.id.localeCompare(remoteSocketId) > 0),
+      makingOffer: false,
+      ignoreOffer: false,
+      settingRemoteAnswer: false,
+    };
+    peersRef.current.set(remoteSocketId, state);
 
     peer.onicecandidate = (event) => {
       if (event.candidate) {
@@ -62,78 +83,118 @@ export function useVoiceChat(room: Room) {
         });
       }
     };
-    peer.ontrack = (event) => attachRemoteStream(remoteSocketId, event.streams[0] ?? new MediaStream([event.track]));
+
+    peer.ontrack = (event) => {
+      attachRemoteStream(remoteSocketId, event.streams[0] ?? new MediaStream([event.track]));
+    };
+
     peer.onconnectionstatechange = () => {
-      if (["failed", "closed"].includes(peer.connectionState)) {
-        peer.close();
-        peersRef.current.delete(remoteSocketId);
+      if (peer.connectionState === "connected") setError(null);
+      if (peer.connectionState === "failed") {
+        setError("Direct voice connection failed. A TURN server may be required for this network.");
+        peer.restartIce();
+      }
+      if (peer.connectionState === "closed") peersRef.current.delete(remoteSocketId);
+    };
+
+    peer.onnegotiationneeded = async () => {
+      try {
+        state.makingOffer = true;
+        await peer.setLocalDescription();
+        if (!peer.localDescription) return;
+        const eventName = peer.localDescription.type === "offer" ? "voice:offer" : "voice:answer";
+        socket.emit(eventName, { targetSocketId: remoteSocketId, description: peer.localDescription });
+      } catch {
+        setError("Could not negotiate the voice connection.");
+      } finally {
+        state.makingOffer = false;
       }
     };
-    return peer;
+
+    const stream = streamRef.current;
+    const track = stream?.getAudioTracks()[0];
+    if (stream && track) peer.addTrack(track, stream);
+    else peer.addTransceiver("audio", { direction: "sendrecv" });
+
+    return state;
   }, [attachRemoteStream]);
 
-  const sendOffer = useCallback(async (remoteSocketId: string) => {
-    const peer = createPeer(remoteSocketId);
-    const offer = await peer.createOffer();
-    await peer.setLocalDescription(offer);
-    socket.emit("voice:offer", { targetSocketId: remoteSocketId, description: offer });
+  const applyDescription = useCallback(async (
+    remoteSocketId: string,
+    description: RTCSessionDescriptionInit,
+  ) => {
+    const state = createPeer(remoteSocketId);
+    const { peer } = state;
+    if (description.type === "answer" && peer.signalingState !== "have-local-offer") return;
+    const readyForOffer = !state.makingOffer && (peer.signalingState === "stable" || state.settingRemoteAnswer);
+    const offerCollision = description.type === "offer" && !readyForOffer;
+    state.ignoreOffer = !state.polite && offerCollision;
+    if (state.ignoreOffer) return;
+
+    state.settingRemoteAnswer = description.type === "answer";
+    try {
+      await peer.setRemoteDescription(description);
+    } finally {
+      state.settingRemoteAnswer = false;
+    }
+
+    for (const candidate of pendingCandidatesRef.current.get(remoteSocketId) ?? []) {
+      await peer.addIceCandidate(candidate);
+    }
+    pendingCandidatesRef.current.delete(remoteSocketId);
+
+    if (description.type === "offer") {
+      await peer.setLocalDescription();
+      if (peer.localDescription) {
+        socket.emit("voice:answer", { targetSocketId: remoteSocketId, description: peer.localDescription });
+      }
+    }
   }, [createPeer]);
 
   useEffect(() => {
-    const activeRemoteIds = new Set(room.players.filter((player) => player.socketId !== socket.id).map((player) => player.socketId));
+    const activeRemoteIds = new Set(
+      room.players.filter((player) => player.socketId !== socket.id).map((player) => player.socketId),
+    );
 
     for (const remoteId of activeRemoteIds) {
       if (!peersRef.current.has(remoteId) && socket.id && socket.id.localeCompare(remoteId) < 0) {
-        void sendOffer(remoteId).catch(() => setError("Could not establish a voice connection."));
+        createPeer(remoteId);
       }
     }
 
-    for (const [remoteId, peer] of peersRef.current) {
+    for (const [remoteId, state] of peersRef.current) {
       if (!activeRemoteIds.has(remoteId)) {
-        peer.close();
+        state.peer.close();
         peersRef.current.delete(remoteId);
-        audioRef.current.get(remoteId)?.remove();
+        const audio = audioRef.current.get(remoteId);
+        if (audio) audio.srcObject = null;
         audioRef.current.delete(remoteId);
+        pendingCandidatesRef.current.delete(remoteId);
       }
     }
-  }, [room.players, sendOffer]);
+  }, [createPeer, room.players]);
 
   useEffect(() => {
-    const onOffer = async ({ fromSocketId, description }: { fromSocketId: string; description: RTCSessionDescriptionInit }) => {
-      try {
-        const peer = createPeer(fromSocketId);
-        await peer.setRemoteDescription(description);
-        for (const candidate of pendingCandidatesRef.current.get(fromSocketId) ?? []) await peer.addIceCandidate(candidate);
-        pendingCandidatesRef.current.delete(fromSocketId);
-        const answer = await peer.createAnswer();
-        await peer.setLocalDescription(answer);
-        socket.emit("voice:answer", { targetSocketId: fromSocketId, description: answer });
-      } catch {
-        setError("Voice offer negotiation failed.");
-      }
+    const onOffer = ({ fromSocketId, description }: { fromSocketId: string; description: RTCSessionDescriptionInit }) => {
+      void applyDescription(fromSocketId, description).catch(() => setError("Voice offer negotiation failed."));
     };
-
-    const onAnswer = async ({ fromSocketId, description }: { fromSocketId: string; description: RTCSessionDescriptionInit }) => {
-      try {
-        const peer = peersRef.current.get(fromSocketId);
-        if (!peer) return;
-        await peer.setRemoteDescription(description);
-        for (const candidate of pendingCandidatesRef.current.get(fromSocketId) ?? []) await peer.addIceCandidate(candidate);
-        pendingCandidatesRef.current.delete(fromSocketId);
-      } catch {
-        setError("Voice answer negotiation failed.");
-      }
+    const onAnswer = ({ fromSocketId, description }: { fromSocketId: string; description: RTCSessionDescriptionInit }) => {
+      void applyDescription(fromSocketId, description).catch(() => setError("Voice answer negotiation failed."));
     };
-
     const onCandidate = async ({ fromSocketId, candidate }: { fromSocketId: string; candidate: RTCIceCandidateInit }) => {
-      const peer = peersRef.current.get(fromSocketId);
-      if (!peer?.remoteDescription) {
+      const state = peersRef.current.get(fromSocketId);
+      if (state?.ignoreOffer) return;
+      if (!state?.peer.remoteDescription) {
         const queued = pendingCandidatesRef.current.get(fromSocketId) ?? [];
         queued.push(candidate);
         pendingCandidatesRef.current.set(fromSocketId, queued);
         return;
       }
-      await peer.addIceCandidate(candidate).catch(() => setError("An ICE candidate could not be added."));
+      try {
+        await state.peer.addIceCandidate(candidate);
+      } catch {
+        if (!state.ignoreOffer) setError("An ICE candidate could not be added.");
+      }
     };
 
     socket.on("voice:offer", onOffer);
@@ -144,7 +205,7 @@ export function useVoiceChat(room: Room) {
       socket.off("voice:answer", onAnswer);
       socket.off("voice:ice-candidate", onCandidate);
     };
-  }, [createPeer]);
+  }, [applyDescription]);
 
   const beginSpeakingDetection = useCallback((stream: MediaStream) => {
     const context = new AudioContext();
@@ -177,8 +238,11 @@ export function useVoiceChat(room: Room) {
       speakingCleanupRef.current = null;
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
-      for (const peer of peersRef.current.values()) {
-        for (const sender of peer.getSenders()) if (sender.track?.kind === "audio") await sender.replaceTrack(null);
+      for (const state of peersRef.current.values()) {
+        const transceiver = state.peer.getTransceivers().find((item) => item.receiver.track.kind === "audio");
+        if (transceiver) {
+          await transceiver.sender.replaceTrack(null);
+        }
       }
       socket.emit("player:mic", false);
       setMicEnabled(false);
@@ -187,19 +251,20 @@ export function useVoiceChat(room: Room) {
 
     try {
       setError(null);
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: false,
+      });
       streamRef.current = stream;
       const track = stream.getAudioTracks()[0];
 
-      for (const [remoteId, peer] of peersRef.current) {
-        const audioTransceiver = peer.getTransceivers().find((transceiver) => transceiver.receiver.track.kind === "audio");
-        if (audioTransceiver && track) {
-          await audioTransceiver.sender.replaceTrack(track);
-          audioTransceiver.direction = "sendrecv";
+      for (const state of peersRef.current.values()) {
+        const transceiver = state.peer.getTransceivers().find((item) => item.receiver.track.kind === "audio");
+        if (transceiver && track) {
+          await transceiver.sender.replaceTrack(track);
         } else if (track) {
-          peer.addTrack(track, stream);
+          state.peer.addTrack(track, stream);
         }
-        await sendOffer(remoteId);
       }
 
       beginSpeakingDetection(stream);
@@ -208,14 +273,14 @@ export function useVoiceChat(room: Room) {
     } catch {
       setError("Microphone access was denied or no input device is available.");
     }
-  }, [beginSpeakingDetection, micEnabled, sendOffer]);
+  }, [beginSpeakingDetection, micEnabled]);
 
   useEffect(() => () => {
     speakingCleanupRef.current?.();
     streamRef.current?.getTracks().forEach((track) => track.stop());
-    peersRef.current.forEach((peer) => peer.close());
+    peersRef.current.forEach((state) => state.peer.close());
     peersRef.current.clear();
-    audioRef.current.forEach((audio) => audio.remove());
+    audioRef.current.forEach((audio) => { audio.srcObject = null; });
     audioRef.current.clear();
     socket.emit("player:mic", false);
   }, []);

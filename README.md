@@ -64,6 +64,14 @@ npm audit
 
 For testing from another physical device, serve the client over HTTPS and configure the backend origin. The included public STUN server is enough for many development networks, but production requires a dedicated STUN/TURN service because peer-to-peer connectivity can fail behind strict NAT or firewalls.
 
+Optional production TURN variables can be set during the client build:
+
+```text
+VITE_TURN_URL=turn:your-turn-host:3478
+VITE_TURN_USERNAME=your-username
+VITE_TURN_CREDENTIAL=your-credential
+```
+
 ## Database decision
 
 A database is intentionally not used in this milestone. Rooms and players are temporary and are discarded whenever the backend restarts, which is appropriate for testing the realtime foundation.
