@@ -11,6 +11,7 @@
     "predev": "npm run build -w @chaos-club/shared",
     "dev": "node scripts/dev.mjs",
     "build": "npm run build -w @chaos-club/shared && npm run build -w @chaos-club/server && npm run build -w @chaos-club/client",
+    "start": "npm run start -w @chaos-club/server",
     "typecheck": "npm run build -w @chaos-club/shared && npm run typecheck -w @chaos-club/server && npm run typecheck -w @chaos-club/client"
   }
 }

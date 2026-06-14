@@ -12,19 +12,53 @@ export function LobbyScreen({ profile, onRoomEntered }: { profile: SessionProfil
   const [roomCode, setRoomCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [connected, setConnected] = useState(socket.connected);
 
   useEffect(() => {
     const updateRooms = (nextRooms: RoomSummary[]) => setRooms(nextRooms);
+    const onConnect = () => {
+      setConnected(true);
+      setError(null);
+      socket.emit("lobby:list");
+    };
+    const onDisconnect = () => setConnected(false);
+    const onConnectError = () => {
+      setConnected(false);
+      setPending(false);
+      setError("Cannot reach the game server. It may be waking up; wait a moment and try again.");
+    };
     socket.on("lobby:rooms", updateRooms);
-    socket.emit("lobby:list");
-    return () => { socket.off("lobby:rooms", updateRooms); };
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("connect_error", onConnectError);
+    if (socket.connected) socket.emit("lobby:list");
+    return () => {
+      socket.off("lobby:rooms", updateRooms);
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("connect_error", onConnectError);
+    };
   }, []);
+
+  const beginRequest = (): number | null => {
+    if (!socket.connected) {
+      setError("Not connected to the game server yet. Wait for the server status to turn online.");
+      return null;
+    }
+    setPending(true);
+    setError(null);
+    return window.setTimeout(() => {
+      setPending(false);
+      setError("The server did not respond in time. Try again after it finishes waking up.");
+    }, 15_000);
+  };
 
   const createRoom = (event: FormEvent) => {
     event.preventDefault();
-    setPending(true);
-    setError(null);
+    const timeoutId = beginRequest();
+    if (timeoutId === null) return;
     socket.emit("room:create", { roomName, profile }, (response) => {
+      window.clearTimeout(timeoutId);
       setPending(false);
       if (response.ok) onRoomEntered(response.data);
       else setError(response.error);
@@ -33,9 +67,10 @@ export function LobbyScreen({ profile, onRoomEntered }: { profile: SessionProfil
 
   const joinRoom = (event: FormEvent) => {
     event.preventDefault();
-    setPending(true);
-    setError(null);
+    const timeoutId = beginRequest();
+    if (timeoutId === null) return;
     socket.emit("room:join", { roomCode, profile }, (response) => {
+      window.clearTimeout(timeoutId);
       setPending(false);
       if (response.ok) onRoomEntered(response.data);
       else setError(response.error);
@@ -45,7 +80,13 @@ export function LobbyScreen({ profile, onRoomEntered }: { profile: SessionProfil
   return (
     <Shell right={<div className="flex items-center gap-3"><Avatar avatar={profile.character.avatar} color={profile.character.color} size="sm" /><div className="hidden text-right sm:block"><p className="text-sm font-bold text-white">{profile.character.name}</p><p className="text-xs text-zinc-500">@{profile.username}</p></div></div>}>
       <div className="mb-8">
-        <p className="text-xs font-bold uppercase tracking-[0.3em] text-chaos-violet">Club lobby</p>
+        <div className="flex items-center gap-3">
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-chaos-violet">Club lobby</p>
+          <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${connected ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-300"}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-emerald-400" : "animate-pulse bg-amber-300"}`} />
+            {connected ? "Server online" : "Connecting"}
+          </span>
+        </div>
         <h1 className="mt-2 text-4xl font-black text-white">Find your room.</h1>
         <p className="mt-2 text-zinc-500">Create a private space or enter an existing room code.</p>
       </div>
@@ -56,12 +97,12 @@ export function LobbyScreen({ profile, onRoomEntered }: { profile: SessionProfil
           <form onSubmit={createRoom} className="glass-panel rounded-2xl p-6">
             <div className="mb-5 flex items-center gap-3"><div className="rounded-xl bg-chaos-violet/15 p-3 text-chaos-violet"><Plus size={21} /></div><div><h2 className="font-bold text-white">Create room</h2><p className="text-xs text-zinc-500">You become the room host</p></div></div>
             <input className="field" value={roomName} onChange={(event) => setRoomName(event.target.value)} maxLength={32} placeholder={`${profile.username}'s Room`} />
-            <Button className="mt-3 w-full" disabled={pending} type="submit"><DoorOpen size={18} /> Create Room</Button>
+            <Button className="mt-3 w-full" disabled={pending || !connected} type="submit"><DoorOpen size={18} /> {pending ? "Please wait..." : "Create Room"}</Button>
           </form>
           <form onSubmit={joinRoom} className="glass-panel rounded-2xl p-6">
             <div className="mb-5 flex items-center gap-3"><div className="rounded-xl bg-chaos-cyan/10 p-3 text-chaos-cyan"><LogIn size={21} /></div><div><h2 className="font-bold text-white">Join by code</h2><p className="text-xs text-zinc-500">Codes contain six characters</p></div></div>
             <input className="field uppercase tracking-[0.35em]" value={roomCode} onChange={(event) => setRoomCode(event.target.value.toUpperCase())} maxLength={6} placeholder="ABC123" />
-            <Button className="mt-3 w-full" variant="secondary" disabled={pending || roomCode.length < 6} type="submit"><Radio size={18} /> Join Room</Button>
+            <Button className="mt-3 w-full" variant="secondary" disabled={pending || !connected || roomCode.length < 6} type="submit"><Radio size={18} /> {pending ? "Please wait..." : "Join Room"}</Button>
           </form>
         </div>
 
@@ -82,4 +123,3 @@ export function LobbyScreen({ profile, onRoomEntered }: { profile: SessionProfil
     </Shell>
   );
 }
-

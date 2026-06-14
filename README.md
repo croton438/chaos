@@ -35,6 +35,17 @@ copy server\.env.example server\.env
 
 The defaults work without environment files. Environment loading can be added with a deployment platform or a package such as `dotenv`; the current server uses process environment variables directly.
 
+## Render deployment
+
+The production server serves both the built React client and the Socket.io backend, so only one Render Web Service is required.
+
+```text
+Build Command: npm ci && npm run build
+Start Command: npm start
+```
+
+Open the single Render service URL for the app. Render provides `RENDER_EXTERNAL_URL` automatically, so `CLIENT_ORIGIN` and `VITE_SERVER_URL` are not required for this same-origin setup. Remove stale values for those variables unless the client and server are intentionally deployed to different domains.
+
 ## Verify
 
 ```bash
@@ -90,4 +101,3 @@ chaos/
 Add task, scoring, private chat, auction, card, alliance, and sabotage logic as isolated modules under `server/src/engines`. Keep game rules independent from Socket.io; handlers should translate realtime events into engine calls. Add matching shared event contracts in `shared/src/index.ts` and mount UI modules in the room's game-stage area.
 
 For Electron later, build the Vite client and load `client/dist` from an Electron main process. Keep server deployment separate for online multiplayer, or start a local server process only for explicitly offline/LAN modes.
-
