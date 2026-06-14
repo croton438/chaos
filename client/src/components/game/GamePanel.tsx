@@ -1,8 +1,9 @@
 import type { GameState, Room, SessionProfile } from "@chaos-club/shared";
-import { Clock3, LogOut, Mic, MicOff, Play, Radio, Users } from "lucide-react";
+import { Clock3, LogOut, Mic, MicOff, Music2, Play, Radio, Users, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useState } from "react";
 import { localizeRuntimeMessage, useLanguage } from "../../i18n/LanguageContext";
 import { socket } from "../../services/socket";
+import { useGameMusic } from "../../hooks/useGameMusic";
 import { Brand } from "../Brand";
 import { Button } from "../Button";
 import { LanguageToggle } from "../LanguageToggle";
@@ -35,6 +36,7 @@ export function GamePanel({ room, profile, micEnabled, voiceError, playerVolumes
   const { language, t } = useLanguage();
   const isHost = room.hostId === profile.id;
   const isGameActive = Boolean(game);
+  const gameMusic = useGameMusic(isGameActive);
 
   useEffect(() => {
     const updateGame = (state: GameState) => setGame(state);
@@ -99,12 +101,17 @@ export function GamePanel({ room, profile, micEnabled, voiceError, playerVolumes
             <div className="hidden text-right sm:block"><p className="text-xs font-bold uppercase tracking-[0.22em] text-chaos-violet">{t("game.title")}</p><p className="text-sm font-semibold text-white">{t("game.round")} {game.roundNumber}/{game.maxRounds} · {phaseLabel}</p></div>
             {game.status !== "finished" && <div className={`flex items-center gap-2 rounded-xl px-3 py-2 font-mono text-lg font-black ${secondsLeft <= 5 ? "bg-rose-500/15 text-rose-300" : "bg-chaos-cyan/10 text-chaos-cyan"}`}><Clock3 size={18} /> {secondsLeft}s</div>}
             <LanguageToggle />
+            <div className="hidden items-center gap-2 rounded-xl border border-white/10 bg-black/30 px-2 py-1.5 lg:flex">
+              <Music2 size={15} className="text-chaos-violet" />
+              <input aria-label={t("game.music")} className="h-1 w-20 cursor-pointer accent-chaos-violet" type="range" min="0" max="100" value={Math.round(gameMusic.volume * 100)} onChange={(event) => gameMusic.setVolume(Number(event.target.value) / 100)} />
+              <button aria-label={t("game.music")} onClick={gameMusic.toggleMuted} className="p-1 text-zinc-400 hover:text-white">{gameMusic.muted ? <VolumeX size={17} /> : <Volume2 size={17} />}</button>
+            </div>
             <Button onClick={onToggleMic} variant={micEnabled ? "primary" : "secondary"} className={micEnabled ? "bg-emerald-500 hover:bg-emerald-400" : ""}>{micEnabled ? <Mic size={18} /> : <MicOff size={18} />}<span className="hidden md:inline">{micEnabled ? t("room.micOn") : t("room.enableMic")}</span></Button>
             <Button variant="danger" onClick={onLeave}><LogOut size={17} /><span className="hidden lg:inline">{t("common.leave")}</span></Button>
           </div>
         </header>
 
-        {(error || voiceError) && <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">{localizeRuntimeMessage(error ?? voiceError, language)}</div>}
+        {(error || voiceError || gameMusic.blocked) && <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">{gameMusic.blocked ? t("game.musicBlocked") : localizeRuntimeMessage(error ?? voiceError, language)}</div>}
 
         <div className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <section className="space-y-5">

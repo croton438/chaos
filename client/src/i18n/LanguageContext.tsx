@@ -77,6 +77,8 @@ const translations = {
     "game.playAgain": "Tekrar Oyna",
     "game.chat": "Sohbet",
     "game.voice": "Ses ve Oyuncular",
+    "game.music": "Oyun müziği",
+    "game.musicBlocked": "Müziği başlatmak için sayfaya tıkla",
   },
   en: {
     "common.you": "you",
@@ -152,6 +154,8 @@ const translations = {
     "game.playAgain": "Play Again",
     "game.chat": "Chat",
     "game.voice": "Voice and Players",
+    "game.music": "Game music",
+    "game.musicBlocked": "Click the page to start music",
   },
 } as const;
 
