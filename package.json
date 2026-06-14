@@ -1,0 +1,16 @@
+{
+  "name": "chaos-club",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
+  "scripts": {
+    "predev": "npm run build -w @chaos-club/shared",
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build -w @chaos-club/shared && npm run build -w @chaos-club/server && npm run build -w @chaos-club/client",
+    "typecheck": "npm run build -w @chaos-club/shared && npm run typecheck -w @chaos-club/server && npm run typecheck -w @chaos-club/client"
+  }
+}

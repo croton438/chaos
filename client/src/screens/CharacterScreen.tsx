@@ -1,0 +1,61 @@
+import { AVATAR_OPTIONS, COLOR_OPTIONS, type AvatarId, type Character } from "@chaos-club/shared";
+import { ArrowRight, Check } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { Avatar } from "../components/Avatar";
+import { Button } from "../components/Button";
+import { Shell } from "../components/Shell";
+
+export function CharacterScreen({ username, onContinue }: { username: string; onContinue: (character: Character) => void }) {
+  const [name, setName] = useState("");
+  const [avatar, setAvatar] = useState<AvatarId>("mask");
+  const [color, setColor] = useState<string>(COLOR_OPTIONS[0]);
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (name.trim()) onContinue({ name: name.trim(), avatar, color });
+  };
+
+  return (
+    <Shell right={<span className="text-sm text-zinc-500">Signed in as <strong className="text-zinc-300">@{username}</strong></span>}>
+      <div className="mx-auto grid max-w-4xl gap-8 lg:grid-cols-[0.8fr_1.2fr]">
+        <section className="glass-panel flex min-h-72 flex-col items-center justify-center rounded-3xl p-8 text-center">
+          <Avatar avatar={avatar} color={color} size="lg" />
+          <h2 className="mt-5 text-2xl font-black text-white">{name.trim() || "Unnamed Agent"}</h2>
+          <p className="mt-1 text-sm text-zinc-500">@{username}</p>
+          <div className="mt-6 h-1 w-16 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 18px ${color}` }} />
+        </section>
+
+        <form onSubmit={submit} className="glass-panel rounded-3xl p-7 sm:p-9">
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-chaos-cyan">Identity setup</p>
+          <h1 className="mt-2 text-3xl font-black text-white">Create your character</h1>
+          <label className="mt-7 block">
+            <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-500">Character name</span>
+            <input className="field" value={name} maxLength={24} onChange={(event) => setName(event.target.value)} placeholder="The Instigator" autoFocus />
+          </label>
+          <fieldset className="mt-6">
+            <legend className="mb-3 text-xs font-bold uppercase tracking-widest text-zinc-500">Avatar</legend>
+            <div className="grid grid-cols-4 gap-3">
+              {AVATAR_OPTIONS.map((option) => (
+                <button type="button" key={option} onClick={() => setAvatar(option)} className={`grid place-items-center rounded-2xl border p-3 transition ${avatar === option ? "border-chaos-violet bg-chaos-violet/10" : "border-white/10 bg-white/[0.02] hover:border-white/20"}`}>
+                  <Avatar avatar={option} color={color} size="sm" />
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset className="mt-6">
+            <legend className="mb-3 text-xs font-bold uppercase tracking-widest text-zinc-500">Signal color</legend>
+            <div className="flex flex-wrap gap-3">
+              {COLOR_OPTIONS.map((option) => (
+                <button type="button" aria-label={`Select ${option}`} key={option} onClick={() => setColor(option)} className="grid h-10 w-10 place-items-center rounded-full border-2 transition" style={{ backgroundColor: option, borderColor: color === option ? "white" : "transparent" }}>
+                  {color === option && <Check size={17} className="text-black" />}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <Button className="mt-8 w-full" type="submit" disabled={!name.trim()}>Continue to Lobby <ArrowRight size={18} /></Button>
+        </form>
+      </div>
+    </Shell>
+  );
+}
+
